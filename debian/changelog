@@ -1,0 +1,6 @@
+wireguard (0.0.20160630-experimental1) experimental; urgency=medium
+
+  * First package upload (Closes: #829107)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 30 Jun 2016 12:50:33 -0400
+

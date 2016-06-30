@@ -1,0 +1,2 @@
+#!/usr/bin/dh-exec
+src/*.c src/*.h src/crypto/ src/Makefile usr/src/wireguard-${DEB_VERSION_UPSTREAM}

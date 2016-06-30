@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/default.mk
+export DEB_VERSION_UPSTREAM
+
+%:
+	dh $@ --with dkms
+
+override_dh_auto_build:
+	$(MAKE) -C src/tools
+
+override_dh_dkms:
+	dh_dkms -V

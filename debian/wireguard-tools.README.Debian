@@ -1,0 +1,26 @@
+Using the experimental WireGuard VPN and encrypted Internet tunnel
+==================================================================
+
+WireGuard is still in the experimental stages.  Please use caution!
+
+This package ships with some dangerous but interesting example
+configuration.
+
+After installing WireGuard, if you'd like to try sending some packets
+through WireGuard, you might want to try, for testing purposes only,
+the script in
+/usr/share/doc/wireguard-tools/examples/client-server-example/client.sh
+as the superuser.
+
+# /usr/share/doc/wireguard-tools/examples/client-server-example/client.sh
+
+This will automatically setup interface wg0, through a very insecure
+transport that is only suitable for demonstration purposes. You can
+then try loading the hidden website or sending pings:
+
+$ sensible-browser http://192.168.4.1
+$ ping 192.168.4.1
+
+Please see https://www.wireguard.io/quickstart for more details.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>, Thu, 30 Jun 2016 16:59:37 -0400
