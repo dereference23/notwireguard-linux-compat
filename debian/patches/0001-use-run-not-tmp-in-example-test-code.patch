@@ -1,0 +1,70 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Fri, 1 Jul 2016 08:29:07 -0400
+Subject: use /run not /tmp in example/test code
+
+/run is both ephemeral and typically only writable by root, while /tmp
+is often persistent and world-writable.  This change avoids possible
+symlink attacks and makes it less likely for generated keys to hit the
+disks.
+
+These changes are for example/test code, so this isn't a security
+vulnerability, but it's better for the example/test code to use good
+form, since inevitably someone will crib their system config scripts
+from these bits.
+---
+ contrib/client-server-example/client.sh | 7 ++++---
+ contrib/stress-testing/self-send.sh     | 8 +++++---
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/contrib/client-server-example/client.sh b/contrib/client-server-example/client.sh
+index fbae46a..97b444d 100755
+--- a/contrib/client-server-example/client.sh
++++ b/contrib/client-server-example/client.sh
+@@ -2,14 +2,15 @@
+ set -e
+ [[ $UID == 0 ]] || { echo "You must be root to run this."; exit 1; }
+ umask 077
+-trap 'rm -f /tmp/wg_private_key' EXIT INT TERM
++mkdir -p -m 0700 /run/wireguard
++trap 'rm -f /run/wireguard/private_key' EXIT INT TERM
+ exec 3<>/dev/tcp/demo.wireguard.io/42912
+-wg genkey | tee /tmp/wg_private_key | wg pubkey >&3
++wg genkey | tee /run/wireguard/private_key | wg pubkey >&3
+ IFS=: read -r status server_pubkey server_port internal_ip <&3
+ [[ $status == OK ]]
+ ip link del dev wg0 2>/dev/null || true
+ ip link add dev wg0 type wireguard
+-wg set wg0 private-key /tmp/wg_private_key peer "$server_pubkey" allowed-ips 0.0.0.0/0 endpoint "demo.wireguard.io:$server_port"
++wg set wg0 private-key /run/wireguard/private_key peer "$server_pubkey" allowed-ips 0.0.0.0/0 endpoint "demo.wireguard.io:$server_port"
+ ip address add "$internal_ip"/24 dev wg0
+ ip link set up dev wg0
+ if [ "$1" == "default-route" ]; then
+diff --git a/contrib/stress-testing/self-send.sh b/contrib/stress-testing/self-send.sh
+index eb7947b..4599b49 100755
+--- a/contrib/stress-testing/self-send.sh
++++ b/contrib/stress-testing/self-send.sh
+@@ -4,6 +4,8 @@ set -e
+ PRIVATE_KEYS=("")
+ PUBLIC_KEYS=("")
+ 
++mkdir -p -m 0700 /run/wireguard
++
+ resetwg() {
+ 	for i in {1..64}; do
+ 		ip link delete dev wg${i} 2>/dev/null >/dev/null || true
+@@ -31,12 +33,12 @@ for i in {1..64}; do
+ 		echo "AllowedIPs = 192.168.8.${j}/32"
+ 		echo "Endpoint = 127.0.0.1:$(( $j + 31222 ))"
+ 	  done
+-	} > "/tmp/deviceload.conf"
++	} > "/run/wireguard/deviceload.conf"
+ 
+ 	ip link add dev wg${i} type wireguard
+-	wg setconf wg${i} "/tmp/deviceload.conf"
++	wg setconf wg${i} "/run/wireguard/deviceload.conf"
+ 	ip link set up dev wg${i}
+-	rm "/tmp/deviceload.conf"
++	rm "/run/wireguard/deviceload.conf"
+ done
+ 
+ ip address add dev wg1 192.168.8.1/24
