@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends: debhelper (>= 9~), dh-exec, dkms, libmnl-dev
 Standards-Version: 3.9.8
-Homepage: https://wireguard.io
+Homepage: https://www.wireguard.io
 Vcs-Git: https://anonscm.debian.org/git/collab-maint/wireguard.git
 Vcs-Browser: https://anonscm.debian.org/git/collab-maint/wireguard.git
 
