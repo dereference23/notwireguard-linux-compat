@@ -3,6 +3,15 @@ Using the experimental WireGuard VPN and encrypted network tunnel
 
 WireGuard is still in the experimental stages.  Please use caution!
 
-Please see https://www.wireguard.io/quickstart for more details.
+To use WireGuard, you'll need an additional kernel module which is
+only available for Linux 4.1 or later.
 
- -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>, Thu, 30 Jun 2016 16:59:37 -0400
+On debian systems, assuming you're running a recent-enough kernel, you
+should be able to build and install the kernel module with only:
+
+  apt install linux-headers-$(uname -r) wireguard-dkms
+
+Please see https://www.wireguard.io/quickstart for more details on
+using WireGuard.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>, Sat,  2 Jul 2016 10:53:17 -0400
