@@ -1,3 +1,11 @@
+wireguard (0.0.20160630-experimental2) experimental; urgency=medium
+
+  * avoid shipping example/demo scripts at request of upstream
+  * limit wireguard-tools to only linux platforms, since it makes no sense
+    elsewhere.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 02 Jul 2016 10:32:49 -0400
+
 wireguard (0.0.20160630-experimental1) experimental; urgency=medium
 
   * First package upload (Closes: #829107)
