@@ -25,7 +25,7 @@ Description: fast, modern, secure kernel VPN tunnel (DKMS version)
  module.
 
 Package: wireguard-tools
-Architecture: any
+Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Recommends: wireguard-dkms | wireguard-modules
 Description: fast, modern, secure kernel VPN tunnel (userland utilities)
