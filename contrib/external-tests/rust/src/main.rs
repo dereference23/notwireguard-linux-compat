@@ -19,7 +19,7 @@ fn memcpy(out: &mut [u8], data: &[u8]) {
 }
 
 fn main() {
-	let send_addr = "test.wireguard.io:51820".to_socket_addrs().unwrap().next().unwrap();
+	let send_addr = "demo.wireguard.io:12913".to_socket_addrs().unwrap().next().unwrap();
 	let listen_addr = "0.0.0.0:0".to_socket_addrs().unwrap().next().unwrap();
 	let socket = UdpSocket::bind(listen_addr).unwrap();
 	let mut empty_payload = [0; 0];
@@ -42,7 +42,7 @@ fn main() {
 
 	let now = time::get_time();
 	let mut tai64n = [0; 12];
-	BigEndian::write_i64(&mut tai64n[0..], now.sec);
+	BigEndian::write_i64(&mut tai64n[0..], 4611686018427387914ULL + now.sec);
 	BigEndian::write_i32(&mut tai64n[8..], now.nsec);
 	let mut initiation_packet = [0; 145];
 	initiation_packet[0] = 1; /* Type: Initiation */

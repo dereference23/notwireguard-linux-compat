@@ -40,6 +40,8 @@ static int open_peer(struct wireguard_peer *peer, void *data)
 	socket_set_peer_dst(peer);
 	timers_init_peer(peer);
 	packet_send_queue(peer);
+	if (peer->persistent_keepalive_interval)
+		socket_send_buffer_to_peer(peer, NULL, 0, 0);
 	return 0;
 }
 
@@ -116,9 +118,9 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 	}
 
 	read_lock_bh(&peer->endpoint_lock);
-	ret = unlikely(peer->endpoint_addr.ss_family != AF_INET && peer->endpoint_addr.ss_family != AF_INET6);
+	ret = peer->endpoint_addr.ss_family != AF_INET && peer->endpoint_addr.ss_family != AF_INET6;
 	read_unlock_bh(&peer->endpoint_lock);
-	if (ret) {
+	if (unlikely(ret)) {
 		net_dbg_ratelimited("No valid endpoint has been configured or discovered for device\n");
 		peer_put(peer);
 		skb_unsendable(skb, dev);
