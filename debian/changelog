@@ -1,3 +1,11 @@
+wireguard (0.0.20160708.1-experimental1) experimental; urgency=medium
+
+  * New upstream release
+  * build-depend on pkg-config
+  * ship upstream examples
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 08 Jul 2016 23:13:54 +0200
+
 wireguard (0.0.20160630-experimental2) experimental; urgency=medium
 
   * avoid shipping example/demo scripts at request of upstream
