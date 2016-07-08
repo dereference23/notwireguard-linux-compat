@@ -6,7 +6,8 @@ Build-Depends:
  debhelper (>= 9~),
  dh-exec,
  dkms,
- libmnl-dev
+ libmnl-dev,
+ pkg-config
 Standards-Version: 3.9.8
 Homepage: https://www.wireguard.io
 Vcs-Git: https://anonscm.debian.org/git/collab-maint/wireguard.git
