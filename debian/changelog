@@ -1,3 +1,9 @@
+wireguard (0.0.20160711-experimental1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 12 Jul 2016 13:20:26 +0200
+
 wireguard (0.0.20160708.1-experimental1) experimental; urgency=medium
 
   * New upstream release
