@@ -151,7 +151,8 @@ static void receive_handshake_packet(struct wireguard_device *wg, void *data, si
 	BUG_ON(!peer);
 
 	rx_stats(peer, len);
-	timers_any_authorized_packet_received(peer);
+	timers_any_authenticated_packet_received(peer);
+	timers_any_authenticated_packet_traversal(peer);
 	update_latest_addr(peer, skb);
 	peer_put(peer);
 }
@@ -247,7 +248,7 @@ static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer
 	}
 
 	dev->last_rx = jiffies;
-	if (netif_rx(skb) == NET_RX_SUCCESS)
+	if (likely(netif_rx(skb) == NET_RX_SUCCESS))
 		rx_stats(peer, skb->len);
 	else {
 		++dev->stats.rx_dropped;
@@ -258,7 +259,8 @@ static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer
 packet_processed:
 	dev_kfree_skb(skb);
 continue_processing:
-	timers_any_authorized_packet_received(peer);
+	timers_any_authenticated_packet_received(peer);
+	timers_any_authenticated_packet_traversal(peer);
 	socket_set_peer_addr(peer, addr);
 	peer_put(peer);
 }
@@ -273,7 +275,7 @@ void packet_receive(struct wireguard_device *wg, struct sk_buff *skb)
 	static const u8 addr;
 #endif
 
-	if (unlikely(skb_data_offset(skb, &offset, &len) < 0 || !len))
+	if (unlikely(skb_data_offset(skb, &offset, &len) < 0))
 		goto err;
 	switch (message_determine_type(skb->data + offset, len)) {
 	case MESSAGE_HANDSHAKE_INITIATION:

@@ -23,6 +23,7 @@ void packet_send_handshake_initiation(struct wireguard_peer *peer)
 
 	if (noise_handshake_create_initiation(&packet, &peer->handshake)) {
 		cookie_add_mac_to_packet(&packet, sizeof(packet), peer);
+		timers_any_authenticated_packet_traversal(peer);
 		socket_send_buffer_to_peer(peer, &packet, sizeof(struct message_handshake_initiation), HANDSHAKE_DSCP);
 		timers_handshake_initiated(peer);
 	}
@@ -39,6 +40,7 @@ void packet_send_handshake_response(struct wireguard_peer *peer)
 		cookie_add_mac_to_packet(&packet, sizeof(packet), peer);
 		if (noise_handshake_begin_session(&peer->handshake, &peer->keypairs, false)) {
 			timers_ephemeral_key_created(peer);
+			timers_any_authenticated_packet_traversal(peer);
 			socket_send_buffer_to_peer(peer, &packet, sizeof(struct message_handshake_response), HANDSHAKE_DSCP);
 		}
 	}
@@ -110,12 +112,15 @@ static inline void keep_key_fresh(struct wireguard_peer *peer)
 
 void packet_send_keepalive(struct wireguard_peer *peer)
 {
-	struct sk_buff *skb = alloc_skb(DATA_PACKET_HEAD_ROOM + MESSAGE_MINIMUM_LENGTH, GFP_ATOMIC);
-	if (unlikely(!skb))
-		return;
-	skb_reserve(skb, DATA_PACKET_HEAD_ROOM);
-	skb->dev = netdev_pub(peer->device);
-	skb_queue_tail(&peer->tx_packet_queue, skb);
+	struct sk_buff *skb;
+	if (!skb_queue_len(&peer->tx_packet_queue)) {
+		skb = alloc_skb(DATA_PACKET_HEAD_ROOM + MESSAGE_MINIMUM_LENGTH, GFP_ATOMIC);
+		if (unlikely(!skb))
+			return;
+		skb_reserve(skb, DATA_PACKET_HEAD_ROOM);
+		skb->dev = netdev_pub(peer->device);
+		skb_queue_tail(&peer->tx_packet_queue, skb);
+	}
 	packet_send_queue(peer);
 }
 
@@ -127,13 +132,19 @@ struct packet_bundle {
 static inline void send_off_bundle(struct packet_bundle *bundle, struct wireguard_peer *peer)
 {
 	struct sk_buff *skb, *next;
+	bool is_keepalive, data_sent = false;
+	if (likely(bundle->first))
+		timers_any_authenticated_packet_traversal(peer);
 	for (skb = bundle->first; skb; skb = next) {
 		/* We store the next pointer locally because socket_send_skb_to_peer
 		 * consumes the packet before the top of the loop comes again. */
 		next = skb->next;
-		if (likely(!socket_send_skb_to_peer(peer, skb, 0 /* TODO: Should we copy the DSCP value from the enclosed packet? */)))
-			timers_data_sent(peer);
+		is_keepalive = skb->len == message_data_len(0);
+		if (likely(!socket_send_skb_to_peer(peer, skb, 0 /* TODO: Should we copy the DSCP value from the enclosed packet? */) && !is_keepalive))
+			data_sent = true;
 	}
+	if (likely(data_sent))
+		timers_data_sent(peer);
 }
 
 static void message_create_data_done(struct sk_buff *skb, struct wireguard_peer *peer)
