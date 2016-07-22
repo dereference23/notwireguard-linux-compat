@@ -1,0 +1,38 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Fri, 22 Jul 2016 17:41:30 -0400
+Subject: remove tests from dkms makefile for now
+
+If we ship this include, then dkms builds fail because they're being
+built from a different location, i think.  At any rate, for the normal
+wireguard-dkms package installation, we don't want these live test
+suites that talk to the public network, so that bit is probably fine.
+
+```
+DKMS make.log for wireguard-0.0.20160722 for kernel 4.6.0-1-amd64 (x86_64)
+Fri Jul 22 17:37:42 EDT 2016
+make: Entering directory '/usr/src/linux-headers-4.6.0-1-amd64'
+/var/lib/dkms/wireguard/0.0.20160722/build/Makefile:28: tests/debug.mk: No such file or directory
+make[3]: *** No rule to make target 'tests/debug.mk'.  Stop.
+/usr/src/linux-headers-4.6.0-1-common/Makefile:1446: recipe for target '_module_/var/lib/dkms/wireguard/0.0.20160722/build' failed
+make[2]: *** [_module_/var/lib/dkms/wireguard/0.0.20160722/build] Error 2
+Makefile:146: recipe for target 'sub-make' failed
+make[1]: *** [sub-make] Error 2
+Makefile:8: recipe for target 'all' failed
+make: *** [all] Error 2
+make: Leaving directory '/usr/src/linux-headers-4.6.0-1-amd64'
+```
+---
+ src/Makefile | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/src/Makefile b/src/Makefile
+index ff20ffe..f937293 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -25,6 +25,4 @@ tools:
+ check:
+ 	$(MAKE) -C $(KERNELDIR) M=$(PWD) C=2 CF="-D__CHECK_ENDIAN__" CONFIG_WIREGUARD_DEBUG=y
+ 
+-include tests/debug.mk
+-
+ .PHONY: all module module-debug tools install clean core-cloc check
