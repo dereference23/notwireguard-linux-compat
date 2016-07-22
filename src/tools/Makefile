@@ -3,12 +3,20 @@ DESTDIR ?=
 BINDIR ?= $(PREFIX)/bin
 LIBDIR ?= $(PREFIX)/lib
 MANDIR ?= $(PREFIX)/share/man
+RUNSTATEDIR ?= /var/run
 
-CFLAGS += $(shell pkg-config --cflags libmnl 2>/dev/null)
+CFLAGS ?= -O3
 CFLAGS += -std=gnu11
 CFLAGS += -pedantic -Wall -Wextra
-CFLAGS += -MMD
-LDLIBS += -lresolv $(shell pkg-config --libs libmnl 2>/dev/null || echo -lmnl)
+CFLAGS += -MMD -MP
+CFLAGS += -DRUNSTATEDIR="\"$(RUNSTATEDIR)\""
+LDLIBS += -lresolv
+ifeq ($(shell uname -s),Linux)
+LIBMNL_CFLAGS := $(shell pkg-config --cflags libmnl 2>/dev/null)
+LIBMNL_LDLIBS := $(shell pkg-config --libs libmnl 2>/dev/null || echo -lmnl)
+CFLAGS += $(LIBMNL_CFLAGS)
+LDLIBS += $(LIBMNL_LDLIBS)
+endif
 
 wg: $(patsubst %.c,%.o,$(wildcard *.c))
 

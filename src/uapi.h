@@ -63,7 +63,16 @@
 #ifndef WGUAPI_H
 #define WGUAPI_H
 
+#ifdef __linux__
 #include <linux/types.h>
+#else
+#include <stdint.h>
+typedef uint8_t __u8;
+typedef uint16_t __u16;
+typedef uint32_t __u32;
+typedef uint64_t __u64;
+typedef int32_t __s32;
+#endif
 #ifdef __KERNEL__
 #include <linux/time.h>
 #include <linux/socket.h>
@@ -119,5 +128,21 @@ struct wgdevice {
 		__u64 peers_size; /* Get */
 	};
 };
+
+/* These are simply for convenience in iterating. It allows you to write something like:
+ *
+ *    for_each_wgpeer(device, peer, i) {
+ *        for_each_wgipmask(peer, ipmask, j) {
+ *            do_something_with_ipmask(ipmask);
+ *        }
+ *     }
+ */
+#define for_each_wgpeer(__dev, __peer, __i) for ((__i) = 0, (__peer) = (typeof(__peer))((uint8_t *)(__dev) + sizeof(struct wgdevice)); \
+						 (__i) < (__dev)->num_peers; \
+						 ++(__i), (__peer) = (typeof(__peer))((uint8_t *)(__peer) + sizeof(struct wgpeer) + (sizeof(struct wgipmask) * (__peer)->num_ipmasks)))
+
+#define for_each_wgipmask(__peer, __ipmask, __i) for ((__i) = 0, (__ipmask) = (typeof(__ipmask))((uint8_t *)(__peer) + sizeof(struct wgpeer)); \
+						 (__i) < (__peer)->num_ipmasks; \
+						 ++(__i), (__ipmask) = (typeof(__ipmask))((uint8_t *)(__ipmask) + sizeof(struct wgipmask)))
 
 #endif
