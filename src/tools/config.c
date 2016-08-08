@@ -90,7 +90,7 @@ static inline uint16_t parse_port(const char *value)
 	return port;
 }
 
-static inline bool parse_key(uint8_t key[WG_KEY_LEN], const char *value)
+static inline bool parse_key(uint8_t key[static WG_KEY_LEN], const char *value)
 {
 	uint8_t tmp[WG_KEY_LEN + 1];
 	if (strlen(value) != b64_len(WG_KEY_LEN) - 1 || b64_pton(value, tmp, WG_KEY_LEN + 1) != WG_KEY_LEN) {
@@ -193,8 +193,8 @@ static inline bool parse_persistent_keepalive(__u16 *interval, const char *value
 	}
 
 	ret = strtoul(value, &end, 10);
-	if (!*value || *value == '-' || *end || (ret && (ret < 10 || ret > 3600))) {
-		fprintf(stderr, "The persistent keepalive interval must be 0/off or 10-3600. Found: `%s`\n", value);
+	if (!*value || *value == '-' || *end || ret > 65535) {
+		fprintf(stderr, "The persistent keepalive interval must be 0/off or 1-65535. Found: `%s`\n", value);
 		return false;
 	}
 
