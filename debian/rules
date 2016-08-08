@@ -3,6 +3,8 @@
 include /usr/share/dpkg/default.mk
 export DEB_VERSION_UPSTREAM
 
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
 %:
 	dh $@ --with dkms
 
