@@ -26,12 +26,12 @@ make: Leaving directory '/usr/src/linux-headers-4.6.0-1-amd64'
  1 file changed, 2 deletions(-)
 
 diff --git a/src/Makefile b/src/Makefile
-index ff20ffe..f937293 100644
+index 49d42ab..3f9dd33 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -25,6 +25,4 @@ tools:
- check:
- 	$(MAKE) -C $(KERNELDIR) M=$(PWD) C=2 CF="-D__CHECK_ENDIAN__" CONFIG_WIREGUARD_DEBUG=y
+@@ -29,6 +29,4 @@ check:
+ cloc: clean
+ 	cloc ./*.c ./*.h
  
 -include tests/debug.mk
 -
