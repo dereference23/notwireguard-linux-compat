@@ -8,12 +8,10 @@ Copyright: 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
 
 Files: src/tools/base64.c
-Copyright: 1996, 1998 Internet Software Consortium
-License: MIT
-
-Files: src/tools/base64.c
-Copyright: 1995 International Business Machines, Inc.
-License: IBM
+Copyright:
+ 1996, 1998 Internet Software Consortium
+ 1995 International Business Machines, Inc.
+License: MIT and IBM
 
 Files: src/crypto/chacha20-avx2-x86_64.S src/crypto/chacha20-ssse3-x86_64.S src/crypto/chacha20poly1305.c src/crypto/poly1305-avx2-x86_64.S src/crypto/poly1305-sse2-x86_64.S
 Copyright: 2015 Martin Willi
