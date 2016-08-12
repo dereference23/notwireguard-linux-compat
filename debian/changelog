@@ -1,3 +1,10 @@
+wireguard (0.0.20160808-experimental2) experimental; urgency=medium
+
+  [ Jason A. Donenfeld ]
+  * properly ship self-tests (Closes: #833961)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 12 Aug 2016 01:45:04 -0400
+
 wireguard (0.0.20160808-experimental1) experimental; urgency=medium
 
   * New upstream release
