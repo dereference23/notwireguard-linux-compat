@@ -1,10 +1,19 @@
 /* Copyright 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
-#include "wireguard.h"
 #include "ratelimiter.h"
+#include "peer.h"
+#include "device.h"
+
 #include <linux/netfilter/x_tables.h>
-#include <net/ip.h>
 #include <linux/module.h>
+#include <net/ip.h>
+
+#if !IS_ENABLED(CONFIG_NETFILTER_XT_MATCH_HASHLIMIT)
+#error "WireGuard requires CONFIG_NETFILTER_XT_MATCH_HASHLIMIT."
+#endif
+#if IS_ENABLED(CONFIG_IPV6) && !IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
+#error "WireGuard requires CONFIG_IP6_NF_IPTABLES when using CONFIG_IPV6."
+#endif
 
 enum {
 	RATELIMITER_PACKETS_PER_SECOND = 75,

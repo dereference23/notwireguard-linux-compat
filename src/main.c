@@ -1,13 +1,14 @@
 /* Copyright 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
-#include "wireguard.h"
 #include "device.h"
+#include "noise.h"
+#include "packets.h"
 #include "crypto/chacha20poly1305.h"
 #include "crypto/blake2s.h"
 #include "crypto/siphash24.h"
 #include "crypto/curve25519.h"
-#include "noise.h"
-#include "packets.h"
+
+#include <linux/version.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <net/rtnetlink.h>
@@ -40,7 +41,7 @@ static int __init mod_init(void)
 static void __exit mod_exit(void)
 {
 	device_uninit();
-	pr_debug("Wireguard has been unloaded\n");
+	pr_debug("WireGuard has been unloaded\n");
 }
 
 module_init(mod_init);

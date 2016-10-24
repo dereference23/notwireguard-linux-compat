@@ -35,6 +35,7 @@ ip1() { pretty 1 "ip $*"; ip -n $netns1 "$@"; }
 ip2() { pretty 2 "ip $*"; ip -n $netns2 "$@"; }
 sleep() { read -t "$1" -N 0 || true; }
 waitiperf() { pretty "${1//*-}" "wait for iperf:5201"; while [[ $(ss -N "$1" -tlp 'sport = 5201') != *iperf3* ]]; do sleep 0.1; done; }
+waitncatudp() { pretty "${1//*-}" "wait for udp:1111"; while [[ $(ss -N "$1" -ulp 'sport = 1111') != *ncat* ]]; do sleep 0.1; done; }
 
 cleanup() {
 	set +e
@@ -111,37 +112,52 @@ tests() {
 	# TCP over IPv4
 	n2 iperf3 -s -1 -B 192.168.241.2 &
 	waitiperf $netns2
-	n1 iperf3 -Z -i 1 -n 500M "$@" -c 192.168.241.2
+	n1 iperf3 -Z -i 1 -n 1G -c 192.168.241.2
 
 	# TCP over IPv6
 	n1 iperf3 -s -1 -B abcd::1 &
 	waitiperf $netns1
-	n2 iperf3 -Z -i 1 -n 500M "$@" -c abcd::1
+	n2 iperf3 -Z -i 1 -n 1G -c abcd::1
 
 	# UDP over IPv4
 	n1 iperf3 -s -1 -B 192.168.241.1 &
 	waitiperf $netns1
-	n2 iperf3 -Z -i 1 -n 500M "$@" -b 0 -u -c 192.168.241.1
+	n2 iperf3 -Z -i 1 -n 1G -b 0 -u -c 192.168.241.1
 
 	# UDP over IPv6
 	n2 iperf3 -s -1 -B abcd::2 &
 	waitiperf $netns2
-	n1 iperf3 -Z -i 1 -n 500M "$@" -b 0 -u -c abcd::2
+	n1 iperf3 -Z -i 1 -n 1G -b 0 -u -c abcd::2
 
 	# Status after
 	n1 wg
 	n2 wg
 }
 
+[[ $(ip1 link show dev wg0) =~ mtu\ ([0-9]+) ]] && orig_mtu="${BASH_REMATCH[1]}"
+big_mtu=$(( 34816 - 1500 + $orig_mtu ))
+
 # Test using IPv4 as outer transport
 n1 wg set wg0 peer "$pub2" endpoint 127.0.0.1:2
 n2 wg set wg0 peer "$pub1" endpoint 127.0.0.1:1
 tests
+ip1 link set wg0 mtu $big_mtu
+ip2 link set wg0 mtu $big_mtu
+tests
+
+ip1 link set wg0 mtu $orig_mtu
+ip2 link set wg0 mtu $orig_mtu
 
 # Test using IPv6 as outer transport
 n1 wg set wg0 peer "$pub2" endpoint [::1]:2
 n2 wg set wg0 peer "$pub1" endpoint [::1]:1
 tests
+ip1 link set wg0 mtu $big_mtu
+ip2 link set wg0 mtu $big_mtu
+tests
+
+ip1 link set wg0 mtu $orig_mtu
+ip2 link set wg0 mtu $orig_mtu
 
 # Test using IPv4 that roaming works
 ip0 -4 addr del 127.0.0.1/8 dev lo
@@ -160,6 +176,23 @@ n1 ping -W 1 -c 1 192.168.241.2
 [[ $(n2 wg show wg0 endpoints) == "$pub1	[::1]:9998" ]]
 n1 wg
 n2 wg
+
+# Test that crypto-RP filter works
+n1 wg set wg0 peer "$pub2" allowed-ips 192.168.241.0/24
+read -r -N 1 -t 1 out < <(n1 ncat -l -u -p 1111) && [[ $out == "X" ]] & listener_pid=$!
+waitncatudp $netns1
+n2 ncat -u 192.168.241.1 1111 <<<"X"
+wait $listener_pid
+more_specific_key="$(pp wg genkey | pp wg pubkey)"
+n1 wg set wg0 peer "$more_specific_key" allowed-ips 192.168.241.2/32
+n2 wg set wg0 listen-port 9997
+read -r -N 1 -t 1 out < <(n1 ncat -l -u -p 1111) && [[ $out == "X" ]] & listener_pid=$!
+waitncatudp $netns1
+n2 ncat -u 192.168.241.1 1111 <<<"X"
+! wait $listener_pid || false
+n1 wg set wg0 peer "$more_specific_key" remove
+[[ $(n1 wg show wg0 endpoints) == "$pub2	[::1]:9997" ]]
+
 
 # Test using NAT. We now change the topology to this:
 # ┌────────────────────────────────────────┐    ┌────────────────────────────────────────────────┐     ┌────────────────────────────────────────┐

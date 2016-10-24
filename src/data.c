@@ -1,16 +1,18 @@
 /* Copyright 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
-#include "wireguard.h"
 #include "noise.h"
+#include "device.h"
+#include "peer.h"
 #include "messages.h"
 #include "packets.h"
 #include "hashtables.h"
-#include <crypto/algapi.h>
-#include <net/xfrm.h>
+
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/bitmap.h>
 #include <linux/scatterlist.h>
+#include <net/xfrm.h>
+#include <crypto/algapi.h>
 
 /* This is RFC6479, a replay detection bitmap algorithm that avoids bitshifts */
 static inline bool counter_validate(union noise_counter *counter, u64 their_counter)
@@ -232,7 +234,7 @@ int packet_create_data(struct sk_buff *skb, struct wireguard_peer *peer, void(*c
 	ctx->keypair = keypair;
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
-	if (parallel && cpumask_weight(cpu_online_mask) > 1) {
+	if ((parallel || padata_queue_len(peer->device->parallel_send) > 0) && cpumask_weight(cpu_online_mask) > 1) {
 		unsigned int cpu = choose_cpu(keypair->remote_index);
 		ret = start_encryption(peer->device->parallel_send, &ctx->padata, cpu);
 		if (unlikely(ret < 0))

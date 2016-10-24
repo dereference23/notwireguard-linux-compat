@@ -1,6 +1,5 @@
 /* Copyright 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
-#include "wireguard.h"
 #include "packets.h"
 #include "socket.h"
 #include "timers.h"
@@ -9,6 +8,7 @@
 #include "peer.h"
 #include "uapi.h"
 #include "messages.h"
+
 #include <linux/module.h>
 #include <linux/rtnetlink.h>
 #include <linux/inet.h>
@@ -112,6 +112,7 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 
 	peer = routing_table_lookup_dst(&wg->peer_routing_table, skb);
 	if (unlikely(!peer)) {
+		net_dbg_ratelimited("No peer is configured for outgoing packet address\n");
 		skb_unsendable(skb, dev);
 		return -ENOKEY;
 	}

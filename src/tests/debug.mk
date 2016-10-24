@@ -8,7 +8,7 @@ SSH_OPTS := -q -o ControlMaster=auto -o ControlPath=.ssh-deployment.sock
 SSH_OPTS1 := $(SSH_OPTS)-1
 SSH_OPTS2 := $(SSH_OPTS)-2
 SSH_OPTS3 := $(SSH_OPTS)-3
-RSYNC_OPTS := --include="tools" --include="noise" --include="crypto" --include="*.mk" --include="*.sh" --include="*.8" --include="*.S" --include="*.c" --include="*.h" --include="Makefile" --exclude="*" -avP #--delete --delete-excluded
+RSYNC_OPTS := --include="selftest" --include="tools" --include="tests" --include="crypto" --include="*.mk" --include="*.sh" --include="*.8" --include="*.S" --include="*.c" --include="*.h" --include="Makefile" --include="Kbuild" --exclude="*" -avP #--delete --delete-excluded
 
 MAYBE_DEBUG := "debug"
 ifeq ($(D),0)
@@ -21,6 +21,8 @@ test: debug
 	-sudo modprobe x_tables
 	-sudo modprobe ipv6
 	-sudo modprobe xt_hashlimit
+	-sudo modprobe nf_conntrack_ipv4
+	-sudo modprobe nf_conntrack_ipv6
 	-sudo rmmod wireguard
 	-sudo insmod wireguard.ko
 	sudo PATH="$(shell pwd)/tools:$$PATH:/usr/sbin:/sbin:/usr/bin:/bin:/usr/local/sbin:/usr/local/bin" ./tests/netns.sh
