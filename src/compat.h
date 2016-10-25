@@ -17,7 +17,10 @@
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#include <linux/security.h>
+#ifndef GRSECURITY_VERSION
 #define get_random_long() (((u64)get_random_int() << 32) | get_random_int())
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
@@ -141,6 +144,13 @@ static inline int padata_queue_len(struct padata_instance *pinst)
 	rcu_read_unlock_bh();
 	return len;
 }
+#endif
+
+/* PaX compatibility */
+#ifdef CONSTIFY_PLUGIN
+#include <linux/cache.h>
+#undef __read_mostly
+#define __read_mostly
 #endif
 
 #endif

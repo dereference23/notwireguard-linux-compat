@@ -34,6 +34,7 @@ struct wireguard_peer {
 	unsigned long persistent_keepalive_interval;
 	bool timer_need_another_keepalive;
 	bool need_resend_queue;
+	bool sent_lastminute_handshake;
 	struct timeval walltime_last_handshake;
 	struct sk_buff_head tx_packet_queue;
 	struct kref refcount;

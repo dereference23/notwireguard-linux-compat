@@ -141,7 +141,12 @@ static void receive_handshake_packet(struct wireguard_device *wg, void *data, si
 		if (noise_handshake_begin_session(&peer->handshake, &peer->keypairs, true)) {
 			timers_ephemeral_key_created(peer);
 			timers_handshake_complete(peer);
-			packet_send_queue(peer);
+			peer->sent_lastminute_handshake = false;
+			/* Calling this function will either send any existing packets in the queue
+			 * and not send a keepalive, which is the best case, Or, if there's nothing
+			 * in the queue, it will send a keepalive, in order to give immediate
+			 * confirmation of the session. */
+			packet_send_keepalive(peer);
 		}
 		break;
 	default:
@@ -177,6 +182,26 @@ void packet_process_queued_handshake_packets(struct work_struct *work)
 	}
 }
 
+static void keep_key_fresh(struct wireguard_peer *peer)
+{
+	struct noise_keypair *keypair;
+	bool send = false;
+	if (peer->sent_lastminute_handshake)
+		return;
+
+	rcu_read_lock();
+	keypair = rcu_dereference(peer->keypairs.current_keypair);
+	if (likely(keypair && keypair->sending.is_valid) && keypair->i_am_the_initiator &&
+	    unlikely(time_is_before_eq_jiffies64(keypair->sending.birthdate + REJECT_AFTER_TIME - KEEPALIVE_TIMEOUT - REKEY_TIMEOUT)))
+		send = true;
+	rcu_read_unlock();
+
+	if (send) {
+		peer->sent_lastminute_handshake = true;
+		packet_send_handshake_initiation_ratelimited(peer);
+	}
+}
+
 struct packet_cb {
 	u8 ds;
 };
@@ -196,10 +221,14 @@ static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer
 	wg = peer->device;
 	dev = netdev_pub(wg);
 
-	if (unlikely(used_new_key))
+	if (unlikely(used_new_key)) {
+		peer->sent_lastminute_handshake = false;
 		packet_send_queue(peer);
+	}
 
-	/* A packet with length 0 is a keep alive packet */
+	keep_key_fresh(peer);
+
+	/* A packet with length 0 is a keepalive packet */
 	if (unlikely(!skb->len)) {
 		net_dbg_ratelimited("Receiving keepalive packet from peer %Lu (%pISpfsc)\n", peer->internal_id, addr);
 		goto packet_processed;
