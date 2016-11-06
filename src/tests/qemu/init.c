@@ -13,12 +13,15 @@
 #include <sys/types.h>
 #include <sys/io.h>
 #include <sys/ioctl.h>
+#include <sys/reboot.h>
 #include <sys/utsname.h>
 #include <linux/random.h>
 #include <linux/version.h>
 
  __attribute__((noreturn)) static void poweroff(void)
 {
+	fflush(stdout);
+	fflush(stderr);
 	ioperm(0x604, 2, 1);
 	outw(1 << 13, 0x604);
 	sleep(30);
@@ -37,7 +40,6 @@ static void panic(const char *what)
 static void print_banner(const struct utsname *utsname)
 {
 	int len = strlen("    WireGuard Test Suite on      ") + strlen(utsname->sysname) + strlen(utsname->release);
-	putchar('\0');putchar('\0');putchar('\0');putchar('\0');putchar('\n');
 	printf("\x1b[45m\x1b[33m\x1b[1m%*.s\x1b[0m\n\x1b[45m\x1b[33m\x1b[1m    WireGuard Test Suite on %s %s    \x1b[0m\n\x1b[45m\x1b[33m\x1b[1m%*.s\x1b[0m\n\n", len, "", utsname->sysname, utsname->release, len, "");
 }
 
@@ -107,7 +109,8 @@ static void enable_logging(void)
 static void kmod_selftests(void)
 {
 	FILE *file;
-	char line[2048], *start;
+	char line[2048], *start, *pass;
+	bool success = true;
 	pretty_message("[+] Module self-tests:");
 	file = fopen("/proc/kmsg", "r");
 	if (!file)
@@ -122,9 +125,18 @@ static void kmod_selftests(void)
 		*strchrnul(start, '\n') = '\0';
 		if (strstr(start, "WireGuard loaded."))
 			break;
-		printf(" \x1b[32m*  %s\x1b[0m\n", start);
+		pass = strstr(start, ": pass");
+		if (!pass || pass[6] != '\0') {
+			success = false;
+			printf(" \x1b[31m*  %s\x1b[0m\n", start);
+		} else
+			printf(" \x1b[32m*  %s\x1b[0m\n", start);
 	}
 	fclose(file);
+	if (!success) {
+		puts("\x1b[31m\x1b[1m[-] Tests failed! :-(\x1b[0m");
+		poweroff();
+	}
 }
 
 static void launch_tests(void)
@@ -167,9 +179,12 @@ static bool linux_4_8_or_higher(const struct utsname *utsname)
 int main(int argc, char *argv[])
 {
 	struct utsname utsname;
+
+	if (write(1, "\0\0\0\0\n", 5) < 0)
+		reboot(RB_AUTOBOOT);
+
 	if (uname(&utsname) < 0)
 		panic("uname");
-
 	print_banner(&utsname);
 	mount_filesystems();
 	kmod_selftests();

@@ -18,9 +18,10 @@
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #include <linux/security.h>
-#ifndef GRSECURITY_VERSION
-#define get_random_long() (((u64)get_random_int() << 32) | get_random_int())
+#ifdef GRSECURITY_VERSION
+#include <linux/random.h>
 #endif
+#define get_random_long() (((u64)get_random_int() << 32) | get_random_int())
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
@@ -30,7 +31,7 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #include <linux/if.h>
 #include <net/udp_tunnel.h>
-#define udp_tunnel_xmit_skb(a, b, c, d, e, f, g, h, i, j, k, l) do { int ret = udp_tunnel_xmit_skb(a, b, c, d, e, f, g, h, i, j, k, l);  iptunnel_xmit_stats(ret, &dev->stats, dev->tstats); } while (0)
+#define udp_tunnel_xmit_skb(a, b, c, d, e, f, g, h, i, j, k, l) do { struct net_device *dev__ = (c)->dev; int ret__ = udp_tunnel_xmit_skb(a, b, c, d, e, f, g, h, i, j, k, l);  iptunnel_xmit_stats(ret__, &dev__->stats, dev__->tstats); } while (0)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0) && IS_ENABLED(CONFIG_IPV6)
@@ -124,6 +125,20 @@ __attribute__((unused)) static inline int udp_sock_create_new(struct net *net, s
 #define time_is_after_jiffies64(a) time_before64(get_jiffies_64(), a)
 #define time_is_before_eq_jiffies64(a) time_after_eq64(get_jiffies_64(), a)
 #define time_is_after_eq_jiffies64(a) time_before_eq64(get_jiffies_64(), a)
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+struct dst_cache { };
+static inline struct dst_entry *dst_cache_get(struct dst_cache *dst_cache) { return NULL; }
+static inline struct rtable *dst_cache_get_ip4(struct dst_cache *dst_cache, __be32 *saddr) { return NULL; }
+static inline void dst_cache_set_ip4(struct dst_cache *dst_cache, struct dst_entry *dst, __be32 saddr) { }
+#if IS_ENABLED(CONFIG_IPV6)
+static inline void dst_cache_set_ip6(struct dst_cache *dst_cache, struct dst_entry *dst, const struct in6_addr *addr) { }
+static inline struct dst_entry *dst_cache_get_ip6(struct dst_cache *dst_cache, struct in6_addr *saddr) { return NULL; }
+#endif
+static inline void dst_cache_reset(struct dst_cache *dst_cache) { }
+static inline int dst_cache_init(struct dst_cache *dst_cache, gfp_t gfp) { return 0; }
+static inline void dst_cache_destroy(struct dst_cache *dst_cache) { }
 #endif
 
 /* https://lkml.org/lkml/2015/6/12/415 */

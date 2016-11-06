@@ -10,17 +10,16 @@
 #include <linux/netfilter.h>
 #include <linux/spinlock.h>
 #include <linux/kref.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+#include <net/dst_cache.h>
+#endif
 
 struct wireguard_device;
 
 struct wireguard_peer {
 	struct wireguard_device *device;
 	struct sockaddr_storage endpoint_addr;
-	struct dst_entry *endpoint_dst;
-	union {
-		struct flowi4 fl4;
-		struct flowi6 fl6;
-	} endpoint_flow;
+	struct dst_cache endpoint_cache;
 	rwlock_t endpoint_lock;
 	struct noise_handshake handshake;
 	struct noise_keypairs keypairs;
@@ -43,7 +42,7 @@ struct wireguard_peer {
 	uint64_t internal_id;
 };
 
-struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_key[static NOISE_PUBLIC_KEY_LEN]);
+struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_key[NOISE_PUBLIC_KEY_LEN]);
 
 struct wireguard_peer *peer_get(struct wireguard_peer *peer);
 struct wireguard_peer *peer_rcu_get(struct wireguard_peer *peer);

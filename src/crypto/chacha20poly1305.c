@@ -14,12 +14,6 @@
 #ifdef CONFIG_X86_64
 #include <asm/cpufeature.h>
 #include <asm/processor.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
-#include <asm/fpu/api.h>
-#include <asm/simd.h>
-#else
-#include <asm/i387.h>
-#endif
 #ifdef CONFIG_AS_SSSE3
 asmlinkage void chacha20_asm_block_xor_ssse3(u32 *state, u8 *dst, const u8 *src);
 asmlinkage void chacha20_asm_4block_xor_ssse3(u32 *state, u8 *dst, const u8 *src);
@@ -77,9 +71,8 @@ static inline u32 and(u32 v, u32 mask)
 	return v & mask;
 }
 
-
 struct chacha20_ctx {
-	u32 state[16];
+	u32 state[CHACHA20_BLOCK_SIZE / sizeof(u32)];
 } __aligned(32);
 
 static void chacha20_generic_block(struct chacha20_ctx *ctx, void *stream)
@@ -139,7 +132,7 @@ static void chacha20_generic_block(struct chacha20_ctx *ctx, void *stream)
 	ctx->state[12]++;
 }
 
-static void chacha20_keysetup(struct chacha20_ctx *ctx, const u8 key[static 32], const u8 nonce[static 8])
+static void chacha20_keysetup(struct chacha20_ctx *ctx, const u8 key[CHACHA20_KEY_SIZE], const u8 nonce[sizeof(u64)])
 {
 	static const char constant[16] = "expand 32-byte k";
 	ctx->state[0]  = le32_to_cpuvp(constant +  0);
@@ -246,7 +239,7 @@ struct poly1305_ctx {
 	u32 r4[5];
 };
 
-static void poly1305_init(struct poly1305_ctx *ctx, const u8 key[static POLY1305_KEY_SIZE])
+static void poly1305_init(struct poly1305_ctx *ctx, const u8 key[POLY1305_KEY_SIZE])
 {
 #ifndef CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS
 	u32 t0, t1, t2, t3;
@@ -525,20 +518,14 @@ static struct blkcipher_desc chacha20_desc = {
 
 bool chacha20poly1305_encrypt(uint8_t *dst, const uint8_t *src, const size_t src_len,
 			      const uint8_t *ad, const size_t ad_len,
-			      const uint64_t nonce, const uint8_t key[static CHACHA20POLY1305_KEYLEN])
+			      const uint64_t nonce, const uint8_t key[CHACHA20POLY1305_KEYLEN])
 {
 	struct poly1305_ctx poly1305_state;
 	struct chacha20_ctx chacha20_state;
 	uint8_t block0[CHACHA20_BLOCK_SIZE] = { 0 };
 	__le64 len;
 	__le64 le_nonce = cpu_to_le64(nonce);
-	bool have_simd = false;
-
-#ifdef CONFIG_X86_64
-	have_simd = irq_fpu_usable();
-	if (have_simd)
-		kernel_fpu_begin();
-#endif
+	bool have_simd = chacha20poly1305_init_simd();
 
 	chacha20_keysetup(&chacha20_state, key, (uint8_t *)&le_nonce);
 
@@ -565,17 +552,15 @@ bool chacha20poly1305_encrypt(uint8_t *dst, const uint8_t *src, const size_t src
 	memzero_explicit(&poly1305_state, sizeof(poly1305_state));
 	memzero_explicit(&chacha20_state, sizeof(chacha20_state));
 
-#ifdef CONFIG_X86_64
-	if (have_simd)
-		kernel_fpu_end();
-#endif
+	chacha20poly1305_deinit_simd(have_simd);
 
 	return true;
 }
 
 bool chacha20poly1305_encrypt_sg(struct scatterlist *dst, struct scatterlist *src, const size_t src_len,
 				 const uint8_t *ad, const size_t ad_len,
-				 const uint64_t nonce, const uint8_t key[static CHACHA20POLY1305_KEYLEN])
+				 const uint64_t nonce, const uint8_t key[CHACHA20POLY1305_KEYLEN],
+				 bool have_simd)
 {
 	struct poly1305_ctx poly1305_state;
 	struct chacha20_ctx chacha20_state;
@@ -584,13 +569,6 @@ bool chacha20poly1305_encrypt_sg(struct scatterlist *dst, struct scatterlist *sr
 	uint8_t mac[POLY1305_MAC_SIZE];
 	__le64 len;
 	__le64 le_nonce = cpu_to_le64(nonce);
-	bool have_simd = false;
-
-#ifdef CONFIG_X86_64
-	have_simd = irq_fpu_usable();
-	if (have_simd)
-		kernel_fpu_begin();
-#endif
 
 	chacha20_keysetup(&chacha20_state, key, (uint8_t *)&le_nonce);
 
@@ -630,18 +608,12 @@ bool chacha20poly1305_encrypt_sg(struct scatterlist *dst, struct scatterlist *sr
 	memzero_explicit(&poly1305_state, sizeof(poly1305_state));
 	memzero_explicit(&chacha20_state, sizeof(chacha20_state));
 	memzero_explicit(mac, sizeof(mac));
-
-#ifdef CONFIG_X86_64
-	if (have_simd)
-		kernel_fpu_end();
-#endif
-
 	return true;
 }
 
 bool chacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, const size_t src_len,
 			      const uint8_t *ad, const size_t ad_len,
-			      const uint64_t nonce, const uint8_t key[static CHACHA20POLY1305_KEYLEN])
+			      const uint64_t nonce, const uint8_t key[CHACHA20POLY1305_KEYLEN])
 {
 	struct poly1305_ctx poly1305_state;
 	struct chacha20_ctx chacha20_state;
@@ -651,16 +623,12 @@ bool chacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, const size_t src
 	size_t dst_len;
 	__le64 len;
 	__le64 le_nonce = cpu_to_le64(nonce);
-	bool have_simd = false;
+	bool have_simd;
 
 	if (unlikely(src_len < POLY1305_MAC_SIZE))
 		return false;
 
-#ifdef CONFIG_X86_64
-	have_simd = irq_fpu_usable();
-	if (have_simd)
-		kernel_fpu_begin();
-#endif
+	have_simd = chacha20poly1305_init_simd();
 
 	chacha20_keysetup(&chacha20_state, key, (uint8_t *)&le_nonce);
 
@@ -690,16 +658,14 @@ bool chacha20poly1305_decrypt(uint8_t *dst, const uint8_t *src, const size_t src
 		chacha20_crypt(&chacha20_state, dst, src, dst_len, have_simd);
 
 	memzero_explicit(&chacha20_state, sizeof(chacha20_state));
-#ifdef CONFIG_X86_64
-	if (have_simd)
-		kernel_fpu_end();
-#endif
+
+	chacha20poly1305_deinit_simd(have_simd);
 	return !ret;
 }
 
 bool chacha20poly1305_decrypt_sg(struct scatterlist *dst, struct scatterlist *src, const size_t src_len,
 				 const uint8_t *ad, const size_t ad_len,
-				 const uint64_t nonce, const uint8_t key[static CHACHA20POLY1305_KEYLEN])
+				 const uint64_t nonce, const uint8_t key[CHACHA20POLY1305_KEYLEN])
 {
 	struct poly1305_ctx poly1305_state;
 	struct chacha20_ctx chacha20_state;
@@ -710,16 +676,12 @@ bool chacha20poly1305_decrypt_sg(struct scatterlist *dst, struct scatterlist *sr
 	size_t dst_len;
 	__le64 len;
 	__le64 le_nonce = cpu_to_le64(nonce);
-	bool have_simd = false;
+	bool have_simd;
 
 	if (unlikely(src_len < POLY1305_MAC_SIZE))
 		return false;
 
-#ifdef CONFIG_X86_64
-	have_simd = irq_fpu_usable();
-	if (have_simd)
-		kernel_fpu_begin();
-#endif
+	have_simd = chacha20poly1305_init_simd();
 
 	chacha20_keysetup(&chacha20_state, key, (uint8_t *)&le_nonce);
 
@@ -763,10 +725,7 @@ bool chacha20poly1305_decrypt_sg(struct scatterlist *dst, struct scatterlist *sr
 	memzero_explicit(read_mac, POLY1305_MAC_SIZE);
 	memzero_explicit(computed_mac, POLY1305_MAC_SIZE);
 	memzero_explicit(&chacha20_state, sizeof(chacha20_state));
-#ifdef CONFIG_X86_64
-	if (have_simd)
-		kernel_fpu_end();
-#endif
+	chacha20poly1305_deinit_simd(have_simd);
 	return !ret;
 }
 

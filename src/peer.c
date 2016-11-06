@@ -14,7 +14,7 @@
 
 static atomic64_t peer_counter = ATOMIC64_INIT(0);
 
-struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_key[static NOISE_PUBLIC_KEY_LEN])
+struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_key[NOISE_PUBLIC_KEY_LEN])
 {
 	struct wireguard_peer *peer;
 	lockdep_assert_held(&wg->device_update_lock);
@@ -25,6 +25,11 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 	peer = kzalloc(sizeof(struct wireguard_peer), GFP_KERNEL);
 	if (!peer)
 		return NULL;
+
+	if (dst_cache_init(&peer->endpoint_cache, GFP_KERNEL)) {
+		kfree(peer);
+		return NULL;
+	}
 
 	peer->internal_id = atomic64_inc_return(&peer_counter);
 	peer->device = wg;
@@ -82,8 +87,7 @@ static void rcu_release(struct rcu_head *rcu)
 	struct wireguard_peer *peer = container_of(rcu, struct wireguard_peer, rcu);
 	pr_debug("Peer %Lu (%pISpfsc) destroyed\n", peer->internal_id, &peer->endpoint_addr);
 	skb_queue_purge(&peer->tx_packet_queue);
-	if (peer->endpoint_dst)
-		dst_release(peer->endpoint_dst);
+	dst_cache_destroy(&peer->endpoint_cache);
 	kzfree(peer);
 }
 
