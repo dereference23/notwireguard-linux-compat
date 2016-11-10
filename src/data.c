@@ -42,6 +42,7 @@ struct decryption_ctx {
 	int ret;
 };
 
+#ifdef CONFIG_WIREGUARD_PARALLEL
 static struct kmem_cache *encryption_ctx_cache;
 static struct kmem_cache *decryption_ctx_cache;
 
@@ -64,6 +65,7 @@ void packet_deinit_data_caches(void)
 	kmem_cache_destroy(encryption_ctx_cache);
 	kmem_cache_destroy(decryption_ctx_cache);
 }
+#endif
 
 /* This is RFC6479, a replay detection bitmap algorithm that avoids bitshifts */
 static inline bool counter_validate(union noise_counter *counter, u64 their_counter)
@@ -215,6 +217,7 @@ static void finish_encryption(struct padata_priv *padata)
 	struct encryption_ctx *ctx = container_of(padata, struct encryption_ctx, padata);
 
 	ctx->callback(&ctx->queue, ctx->peer);
+	atomic_dec(&ctx->peer->parallel_encryption_inflight);
 	peer_put(ctx->peer);
 	kmem_cache_free(encryption_ctx_cache, ctx);
 }
@@ -295,7 +298,7 @@ int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer, 
 	}
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
-	if ((skb_queue_len(queue) > 1 || queue->next->len > 256 || padata_queue_len(peer->device->parallel_send) > 0) && cpumask_weight(cpu_online_mask) > 1) {
+	if ((skb_queue_len(queue) > 1 || queue->next->len > 256 || atomic_read(&peer->parallel_encryption_inflight) > 0) && cpumask_weight(cpu_online_mask) > 1) {
 		unsigned int cpu = choose_cpu(keypair->remote_index);
 		struct encryption_ctx *ctx = kmem_cache_alloc(encryption_ctx_cache, GFP_ATOMIC);
 		if (!ctx)
@@ -308,8 +311,10 @@ int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer, 
 		ret = -EBUSY;
 		if (unlikely(!ctx->peer))
 			goto err_parallel;
+		atomic_inc(&peer->parallel_encryption_inflight);
 		ret = start_encryption(peer->device->parallel_send, &ctx->padata, cpu);
 		if (unlikely(ret < 0)) {
+			atomic_dec(&peer->parallel_encryption_inflight);
 			peer_put(ctx->peer);
 err_parallel:
 			skb_queue_splice(&ctx->queue, queue);
@@ -317,9 +322,9 @@ err_parallel:
 			goto err;
 		}
 	} else
+serial_encrypt:
 #endif
 	{
-serial_encrypt:
 		queue_encrypt_reset(queue, keypair);
 		callback(queue, peer);
 	}
