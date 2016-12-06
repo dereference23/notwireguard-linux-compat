@@ -1,3 +1,11 @@
+wireguard (0.0.20161129-experimental1) experimental; urgency=medium
+
+  * new upstream release
+  * generate src/version.h from debian package version instead of git
+    repo.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 05 Dec 2016 23:01:22 -0500
+
 wireguard (0.0.20161116.1-experimental1) experimental; urgency=medium
 
   * new upstream release
