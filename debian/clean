@@ -1,3 +1,4 @@
 src/tools/*.o
 src/tools/*.d
 src/tools/wg
+src/version.h
