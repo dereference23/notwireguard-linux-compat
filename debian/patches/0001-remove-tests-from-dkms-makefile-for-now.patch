@@ -26,13 +26,13 @@ make: Leaving directory '/usr/src/linux-headers-4.6.0-1-amd64'
  1 file changed, 2 deletions(-)
 
 diff --git a/src/Makefile b/src/Makefile
-index 2ca55ec..651944f 100644
+index 20947ac..71690b2 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -29,6 +29,4 @@ check:
+@@ -36,6 +36,4 @@ check:
  cloc: clean
  	cloc $(filter-out compat.h, $(wildcard *.c) $(wildcard *.h))
  
 -include tests/debug.mk
 -
- .PHONY: all module module-debug tools install clean core-cloc check
+ .PHONY: all module module-debug tools install clean core-cloc check version.h
