@@ -1,3 +1,5 @@
+/* Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
+
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <errno.h>
@@ -123,7 +125,7 @@ static void kmod_selftests(void)
 			continue;
 		start += 11;
 		*strchrnul(start, '\n') = '\0';
-		if (strstr(start, "WireGuard loaded."))
+		if (strstr(start, "www.wireguard.io"))
 			break;
 		pass = strstr(start, ": pass");
 		if (!pass || pass[6] != '\0') {
