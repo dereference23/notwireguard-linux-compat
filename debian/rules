@@ -15,4 +15,4 @@ override_dh_dkms:
 	dh_dkms -V
 
 src/version.h:
-	echo '#define WIREGUARD_VERSION "experimental-'$(shell dpkg-parsechangelog -S Version)'"' > $@
+	echo '#define WIREGUARD_VERSION "'$(shell dpkg-parsechangelog -S Version)'"' > $@
