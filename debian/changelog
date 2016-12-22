@@ -1,3 +1,13 @@
+wireguard (0.0.20161218-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Move from experimental to unstable.  Upstream isn't committed to a
+    long-term stable branch, so we should keep this from migrating to
+    stretch, but it has stabilized enough for wider distribution.
+  * Note: we are not using upstream's install-dkms Makefile target.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 22 Dec 2016 08:25:15 -0500
+
 wireguard (0.0.20161129-experimental1) experimental; urgency=medium
 
   * new upstream release
