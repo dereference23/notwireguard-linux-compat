@@ -29,9 +29,10 @@ netns1="wg-test-$$-1"
 netns2="wg-test-$$-2"
 pretty() { echo -e "\x1b[32m\x1b[1m[+] ${1:+NS$1: }${2}\x1b[0m" >&3; }
 pp() { pretty "" "$*"; "$@"; }
-n0() { pretty 0 "$*"; ip netns exec $netns0 "$@"; }
-n1() { pretty 1 "$*"; ip netns exec $netns1 "$@"; }
-n2() { pretty 2 "$*"; ip netns exec $netns2 "$@"; }
+maybe_exec() { if [[ $BASHPID -eq $$ ]]; then "$@"; else exec "$@"; fi; }
+n0() { pretty 0 "$*"; maybe_exec ip netns exec $netns0 "$@"; }
+n1() { pretty 1 "$*"; maybe_exec ip netns exec $netns1 "$@"; }
+n2() { pretty 2 "$*"; maybe_exec ip netns exec $netns2 "$@"; }
 ip0() { pretty 0 "ip $*"; ip -n $netns0 "$@"; }
 ip1() { pretty 1 "ip $*"; ip -n $netns1 "$@"; }
 ip2() { pretty 2 "ip $*"; ip -n $netns2 "$@"; }
@@ -43,23 +44,21 @@ waitiface() { pretty "${1//*-}" "wait for $2 to come up"; ip netns exec "$1" bas
 cleanup() {
 	set +e
 	exec 2>/dev/null
-	echo "$orig_message_cost" > /proc/sys/net/core/message_cost
-	echo "$orig_strict_writes" > /proc/sys/kernel/sysctl_writes_strict
+	printf "$orig_message_cost" > /proc/sys/net/core/message_cost
 	ip0 link del dev wg0
 	ip1 link del dev wg0
 	ip2 link del dev wg0
+	local to_kill="$(ip netns pids $netns0) $(ip netns pids $netns1) $(ip netns pids $netns2)"
+	[[ -n $to_kill ]] && kill $to_kill
 	pp ip netns del $netns1
 	pp ip netns del $netns2
 	pp ip netns del $netns0
-	kill -- -$$
 	exit
 }
 
-orig_strict_writes="$(< /proc/sys/kernel/sysctl_writes_strict)"
 orig_message_cost="$(< /proc/sys/net/core/message_cost)"
 trap cleanup EXIT
-echo 1 > /proc/sys/kernel/sysctl_writes_strict
-echo 0 > /proc/sys/net/core/message_cost
+printf 0 > /proc/sys/net/core/message_cost
 
 ip netns del $netns0 2>/dev/null || true
 ip netns del $netns1 2>/dev/null || true
@@ -176,17 +175,21 @@ n1 ping -W 1 -c 1 192.168.241.2
 
 # Test that crypto-RP filter works
 n1 wg set wg0 peer "$pub2" allowed-ips 192.168.241.0/24
-read -r -N 1 -t 1 out < <(n1 ncat -l -u -p 1111) && [[ $out == "X" ]] & listener_pid=$!
+exec 4< <(n1 ncat -l -u -p 1111)
+nmap_pid=$!
 waitncatudp $netns1
 n2 ncat -u 192.168.241.1 1111 <<<"X"
-wait $listener_pid
+read -r -N 1 -t 1 out <&4 && [[ $out == "X" ]]
+kill $nmap_pid
 more_specific_key="$(pp wg genkey | pp wg pubkey)"
 n1 wg set wg0 peer "$more_specific_key" allowed-ips 192.168.241.2/32
 n2 wg set wg0 listen-port 9997
-read -r -N 1 -t 1 out < <(n1 ncat -l -u -p 1111) && [[ $out == "X" ]] & listener_pid=$!
+exec 4< <(n1 ncat -l -u -p 1111)
+nmap_pid=$!
 waitncatudp $netns1
 n2 ncat -u 192.168.241.1 1111 <<<"X"
-! wait $listener_pid || false
+! read -r -N 1 -t 1 out <&4
+kill $nmap_pid
 n1 wg set wg0 peer "$more_specific_key" remove
 [[ $(n1 wg show wg0 endpoints) == "$pub2	[::1]:9997" ]]
 
@@ -231,9 +234,9 @@ waitiface $netns0 vethrs
 waitiface $netns1 vethc
 waitiface $netns2 veths
 
-n0 bash -c 'echo 1 > /proc/sys/net/ipv4/ip_forward'
-n0 bash -c 'echo 2 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout'
-n0 bash -c 'echo 2 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream'
+n0 bash -c 'printf 1 > /proc/sys/net/ipv4/ip_forward'
+n0 bash -c 'printf 2 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout'
+n0 bash -c 'printf 2 > /proc/sys/net/netfilter/nf_conntrack_udp_timeout_stream'
 n0 iptables -t nat -A POSTROUTING -s 192.168.1.0/24 -d 10.0.0.0/24 -j SNAT --to 10.0.0.1
 
 n1 wg set wg0 peer "$pub2" endpoint 10.0.0.100:2 persistent-keepalive 1
@@ -256,9 +259,9 @@ ip2 link add dev wg0 type wireguard
 configure_peers
 ip1 link add veth1 type veth peer name veth2
 ip1 link set veth2 netns $netns2
-n1 bash -c 'echo 0 > /proc/sys/net/ipv6/conf/veth1/accept_dad'
-n2 bash -c 'echo 0 > /proc/sys/net/ipv6/conf/veth2/accept_dad'
-n1 bash -c 'echo 1 > /proc/sys/net/ipv4/conf/veth1/promote_secondaries'
+n1 bash -c 'printf 0 > /proc/sys/net/ipv6/conf/veth1/accept_dad'
+n2 bash -c 'printf 0 > /proc/sys/net/ipv6/conf/veth2/accept_dad'
+n1 bash -c 'printf 1 > /proc/sys/net/ipv4/conf/veth1/promote_secondaries'
 ip1 addr add 10.0.0.1/24 dev veth1
 ip1 addr add fd00:aa::1/96 dev veth1
 ip2 addr add 10.0.0.2/24 dev veth2

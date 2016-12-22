@@ -6,7 +6,7 @@
 #include "packets.h"
 #include "crypto/chacha20poly1305.h"
 #include "crypto/blake2s.h"
-#include "crypto/siphash24.h"
+#include "crypto/siphash.h"
 #include "crypto/curve25519.h"
 
 #include <linux/version.h>
@@ -19,12 +19,7 @@ static int __init mod_init(void)
 	int ret;
 
 #ifdef DEBUG
-	if (!routing_table_selftest() ||
-	    !packet_counter_selftest() ||
-	    !curve25519_selftest() ||
-	    !chacha20poly1305_selftest() ||
-	    !blake2s_selftest() ||
-	    !siphash24_selftest())
+	if (!routing_table_selftest() || !packet_counter_selftest() || !curve25519_selftest() || !chacha20poly1305_selftest() || !blake2s_selftest() || !siphash_selftest())
 		return -ENOTRECOVERABLE;
 #endif
 	chacha20poly1305_init();
@@ -32,7 +27,7 @@ static int __init mod_init(void)
 
 	ret = ratelimiter_module_init();
 	if (ret < 0)
-		goto out;
+		return ret;
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
 	ret = packet_init_data_caches();
@@ -47,14 +42,14 @@ static int __init mod_init(void)
 	pr_info("WireGuard " WIREGUARD_VERSION " loaded. See www.wireguard.io for information.\n");
 	pr_info("Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.\n");
 
-	goto out;
+	return 0;
+
 err_device:
 #ifdef CONFIG_WIREGUARD_PARALLEL
 	packet_deinit_data_caches();
-#endif
 err_packet:
+#endif
 	ratelimiter_module_deinit();
-out:
 	return ret;
 }
 

@@ -4,16 +4,9 @@
 #include "peer.h"
 #include "device.h"
 
-#include <linux/netfilter/x_tables.h>
 #include <linux/module.h>
+#include <linux/netfilter/x_tables.h>
 #include <net/ip.h>
-
-#if !IS_ENABLED(CONFIG_NETFILTER_XT_MATCH_HASHLIMIT)
-#error "WireGuard requires CONFIG_NETFILTER_XT_MATCH_HASHLIMIT."
-#endif
-#if IS_ENABLED(CONFIG_IPV6) && !IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
-#error "WireGuard requires CONFIG_IP6_NF_IPTABLES when using CONFIG_IPV6."
-#endif
 
 static struct xt_match *v4_match;
 #if IS_ENABLED(CONFIG_IPV6)
@@ -106,13 +99,11 @@ bool ratelimiter_allow(struct ratelimiter *ratelimiter, struct sk_buff *skb)
 		action.match = v4_match;
 		action.matchinfo = &ratelimiter->v4_info;
 		action.thoff = ip_hdrlen(skb);
-		action.family = NFPROTO_IPV4;
 	}
 #if IS_ENABLED(CONFIG_IPV6)
 	else if (ip_hdr(skb)->version == 6) {
 		action.match = v6_match;
 		action.matchinfo = &ratelimiter->v6_info;
-		action.family = NFPROTO_IPV6;
 	}
 #endif
 	else
@@ -124,13 +115,13 @@ int ratelimiter_module_init(void)
 {
 	v4_match = xt_request_find_match(NFPROTO_IPV4, "hashlimit", 1);
 	if (IS_ERR(v4_match)) {
-		pr_err("The xt_hashlimit module for IPv4 is required");
+		pr_err("The xt_hashlimit module for IPv4 is required\n");
 		return PTR_ERR(v4_match);
 	}
 #if IS_ENABLED(CONFIG_IPV6)
 	v6_match = xt_request_find_match(NFPROTO_IPV6, "hashlimit", 1);
 	if (IS_ERR(v6_match)) {
-		pr_err("The xt_hashlimit module for IPv6 is required");
+		pr_err("The xt_hashlimit module for IPv6 is required\n");
 		module_put(v4_match->me);
 		return PTR_ERR(v6_match);
 	}

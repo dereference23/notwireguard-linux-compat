@@ -11,17 +11,18 @@
 #error "WireGuard requires Linux >= 4.1"
 #endif
 
+/* These conditionals can't be enforced by an out of tree module very easily,
+ * so we stick them here in compat instead. */
+#if !IS_ENABLED(CONFIG_NETFILTER_XT_MATCH_HASHLIMIT)
+#error "WireGuard requires CONFIG_NETFILTER_XT_MATCH_HASHLIMIT."
+#endif
+#if IS_ENABLED(CONFIG_IPV6) && !IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
+#error "WireGuard requires CONFIG_IP6_NF_IPTABLES when using CONFIG_IPV6."
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0) && !defined(DEBUG) && defined(net_dbg_ratelimited)
 #undef net_dbg_ratelimited
 #define net_dbg_ratelimited(fmt, ...) do { if (0) no_printk(KERN_DEBUG pr_fmt(fmt), ##__VA_ARGS__); } while (0)
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-#include <linux/security.h>
-#ifdef GRSECURITY_VERSION
-#include <linux/random.h>
-#endif
-#define get_random_long() (((u64)get_random_int() << 32) | get_random_int())
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
@@ -159,7 +160,7 @@ static inline struct net_device *netdev_pub(void *dev)
 #define net_dbg_skb_ratelimited(fmt, skb, ...) do { \
 	struct endpoint __endpoint; \
 	socket_endpoint_from_skb(&__endpoint, skb); \
-	net_dbg_ratelimited(fmt, &__endpoint.addr_storage, ##__VA_ARGS__); \
+	net_dbg_ratelimited(fmt, &__endpoint.addr, ##__VA_ARGS__); \
 } while(0)
 #else
 #define net_dbg_skb_ratelimited(fmt, skb, ...)

@@ -14,6 +14,7 @@
 #include <linux/mutex.h>
 #include <linux/net.h>
 #include <linux/padata.h>
+#include <linux/notifier.h>
 
 struct wireguard_device {
 	struct sock __rcu *sock4, *sock6;
@@ -32,6 +33,9 @@ struct wireguard_device {
 	struct list_head peer_list;
 	struct mutex device_update_lock;
 	struct mutex socket_update_lock;
+#ifdef CONFIG_PM_SLEEP
+	struct notifier_block clear_peers_on_suspend;
+#endif
 };
 
 int device_init(void);

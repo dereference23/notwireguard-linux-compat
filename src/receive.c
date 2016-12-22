@@ -110,7 +110,7 @@ static void receive_handshake_packet(struct wireguard_device *wg, void *data, si
 			return;
 		}
 		update_latest_addr(peer, skb);
-		net_dbg_ratelimited("Receiving handshake initiation from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Receiving handshake initiation from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 		packet_send_handshake_response(peer);
 		break;
 	case MESSAGE_HANDSHAKE_RESPONSE:
@@ -125,7 +125,7 @@ static void receive_handshake_packet(struct wireguard_device *wg, void *data, si
 			return;
 		}
 		update_latest_addr(peer, skb);
-		net_dbg_ratelimited("Receiving handshake response from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Receiving handshake response from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 		if (noise_handshake_begin_session(&peer->handshake, &peer->keypairs, true)) {
 			timers_ephemeral_key_created(peer);
 			timers_handshake_complete(peer);
@@ -218,44 +218,31 @@ static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer
 
 	/* A packet with length 0 is a keepalive packet */
 	if (unlikely(!skb->len)) {
-		net_dbg_ratelimited("Receiving keepalive packet from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
-		goto packet_processed;
-	}
-
-	if (unlikely(skb->len < sizeof(struct iphdr))) {
-		++dev->stats.rx_errors;
-		++dev->stats.rx_length_errors;
-		net_dbg_ratelimited("Packet missing ip header from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Receiving keepalive packet from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 		goto packet_processed;
 	}
 
 	if (!pskb_may_pull(skb, 1 /* For checking the ip version below */)) {
 		++dev->stats.rx_errors;
 		++dev->stats.rx_length_errors;
-		net_dbg_ratelimited("Packet missing IP version from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Packet missing IP version from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 		goto packet_processed;
 	}
 
 	skb->dev = dev;
 	skb->ip_summed = CHECKSUM_UNNECESSARY;
-	if (ip_hdr(skb)->version == 4) {
+	if (skb->len >= sizeof(struct iphdr) && ip_hdr(skb)->version == 4) {
 		skb->protocol = htons(ETH_P_IP);
 		if (INET_ECN_is_ce(PACKET_CB(skb)->ds))
 			IP_ECN_set_ce(ip_hdr(skb));
-	} else if (ip_hdr(skb)->version == 6) {
-		if (unlikely(skb->len < sizeof(struct ipv6hdr))) {
-			++dev->stats.rx_errors;
-			++dev->stats.rx_length_errors;
-			net_dbg_ratelimited("Packet missing ipv6 header from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
-			goto packet_processed;
-		}
+	} else if (skb->len >= sizeof(struct ipv6hdr) && ip_hdr(skb)->version == 6) {
 		skb->protocol = htons(ETH_P_IPV6);
 		if (INET_ECN_is_ce(PACKET_CB(skb)->ds))
 			IP6_ECN_set_ce(skb, ipv6_hdr(skb));
 	} else {
 		++dev->stats.rx_errors;
 		++dev->stats.rx_length_errors;
-		net_dbg_ratelimited("Packet neither ipv4 nor ipv6 from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Packet neither ipv4 nor ipv6 from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 		goto packet_processed;
 	}
 
@@ -267,7 +254,7 @@ static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer
 	if (unlikely(routed_peer != peer)) {
 		++dev->stats.rx_errors;
 		++dev->stats.rx_frame_errors;
-		net_dbg_skb_ratelimited("Packet has unallowed src IP (%pISc) from peer %Lu (%pISpfsc)\n", skb, peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_skb_ratelimited("Packet has unallowed src IP (%pISc) from peer %Lu (%pISpfsc)\n", skb, peer->internal_id, &peer->endpoint.addr);
 		goto packet_processed;
 	}
 
@@ -276,7 +263,7 @@ static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer
 		rx_stats(peer, skb->len);
 	else {
 		++dev->stats.rx_dropped;
-		net_dbg_ratelimited("Failed to give packet to userspace from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Failed to give packet to userspace from peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 	}
 	goto continue_processing;
 

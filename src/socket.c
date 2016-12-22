@@ -13,7 +13,7 @@
 #include <net/udp_tunnel.h>
 #include <net/ipv6.h>
 
-static inline int send4(struct wireguard_device *wg, struct sk_buff *skb, struct endpoint *endpoint, uint8_t ds, struct dst_cache *cache)
+static inline int send4(struct wireguard_device *wg, struct sk_buff *skb, struct endpoint *endpoint, u8 ds, struct dst_cache *cache)
 {
 	struct flowi4 fl = {
 		.saddr = endpoint->src4.s_addr,
@@ -51,12 +51,12 @@ static inline int send4(struct wireguard_device *wg, struct sk_buff *skb, struct
 		}
 		if (unlikely(IS_ERR(rt))) {
 			ret = PTR_ERR(rt);
-			net_dbg_ratelimited("No route to %pISpfsc, error %d\n", &endpoint->addr_storage, ret);
+			net_dbg_ratelimited("No route to %pISpfsc, error %d\n", &endpoint->addr, ret);
 			goto err;
 		} else if (unlikely(rt->dst.dev == skb->dev)) {
 			dst_release(&rt->dst);
 			ret = -ELOOP;
-			net_dbg_ratelimited("Avoiding routing loop to %pISpfsc\n", &endpoint->addr_storage);
+			net_dbg_ratelimited("Avoiding routing loop to %pISpfsc\n", &endpoint->addr);
 			goto err;
 		}
 		if (cache)
@@ -77,7 +77,7 @@ out:
 	return ret;
 }
 
-static inline int send6(struct wireguard_device *wg, struct sk_buff *skb, struct endpoint *endpoint, uint8_t ds, struct dst_cache *cache)
+static inline int send6(struct wireguard_device *wg, struct sk_buff *skb, struct endpoint *endpoint, u8 ds, struct dst_cache *cache)
 {
 #if IS_ENABLED(CONFIG_IPV6)
 	struct flowi6 fl = {
@@ -116,12 +116,12 @@ static inline int send6(struct wireguard_device *wg, struct sk_buff *skb, struct
 		}
 		ret = ipv6_stub->ipv6_dst_lookup(sock_net(sock), sock, &dst, &fl);
 		if (unlikely(ret)) {
-			net_dbg_ratelimited("No route to %pISpfsc, error %d\n", &endpoint->addr_storage, ret);
+			net_dbg_ratelimited("No route to %pISpfsc, error %d\n", &endpoint->addr, ret);
 			goto err;
 		} else if (unlikely(dst->dev == skb->dev)) {
 			dst_release(dst);
 			ret = -ELOOP;
-			net_dbg_ratelimited("Avoiding routing loop to %pISpfsc\n", &endpoint->addr_storage);
+			net_dbg_ratelimited("Avoiding routing loop to %pISpfsc\n", &endpoint->addr);
 			goto err;
 		}
 		if (cache)
@@ -145,15 +145,15 @@ out:
 #endif
 }
 
-int socket_send_skb_to_peer(struct wireguard_peer *peer, struct sk_buff *skb, uint8_t ds)
+int socket_send_skb_to_peer(struct wireguard_peer *peer, struct sk_buff *skb, u8 ds)
 {
 	size_t skb_len = skb->len;
 	int ret = -EAFNOSUPPORT;
 
 	read_lock_bh(&peer->endpoint_lock);
-	if (peer->endpoint.addr_storage.ss_family == AF_INET)
+	if (peer->endpoint.addr.sa_family == AF_INET)
 		ret = send4(peer->device, skb, &peer->endpoint, ds, &peer->endpoint_cache);
-	else if (peer->endpoint.addr_storage.ss_family == AF_INET6)
+	else if (peer->endpoint.addr.sa_family == AF_INET6)
 		ret = send6(peer->device, skb, &peer->endpoint, ds, &peer->endpoint_cache);
 	if (likely(!ret))
 		peer->tx_bytes += skb_len;
@@ -162,7 +162,7 @@ int socket_send_skb_to_peer(struct wireguard_peer *peer, struct sk_buff *skb, ui
 	return ret;
 }
 
-int socket_send_buffer_to_peer(struct wireguard_peer *peer, void *buffer, size_t len, uint8_t ds)
+int socket_send_buffer_to_peer(struct wireguard_peer *peer, void *buffer, size_t len, u8 ds)
 {
 	struct sk_buff *skb = alloc_skb(len + SKB_HEADER_LEN, GFP_ATOMIC);
 	if (unlikely(!skb))
@@ -190,9 +190,9 @@ int socket_send_buffer_as_reply_to_skb(struct wireguard_device *wg, struct sk_bu
 	skb_reserve(skb, SKB_HEADER_LEN);
 	memcpy(skb_put(skb, len), out_buffer, len);
 
-	if (endpoint.addr_storage.ss_family == AF_INET)
+	if (endpoint.addr.sa_family == AF_INET)
 		ret = send4(wg, skb, &endpoint, 0, NULL);
-	else if (endpoint.addr_storage.ss_family == AF_INET6)
+	else if (endpoint.addr.sa_family == AF_INET6)
 		ret = send6(wg, skb, &endpoint, 0, NULL);
 	else
 		ret = -EAFNOSUPPORT;
@@ -222,7 +222,7 @@ int socket_endpoint_from_skb(struct endpoint *endpoint, struct sk_buff *skb)
 
 void socket_set_peer_endpoint(struct wireguard_peer *peer, struct endpoint *endpoint)
 {
-	if (endpoint->addr_storage.ss_family == AF_INET) {
+	if (endpoint->addr.sa_family == AF_INET) {
 		read_lock_bh(&peer->endpoint_lock);
 		if (likely(peer->endpoint.addr4.sin_family == AF_INET &&
 			   peer->endpoint.addr4.sin_port == endpoint->addr4.sin_port &&
@@ -233,7 +233,7 @@ void socket_set_peer_endpoint(struct wireguard_peer *peer, struct endpoint *endp
 		write_lock_bh(&peer->endpoint_lock);
 		peer->endpoint.addr4 = endpoint->addr4;
 		peer->endpoint.src4 = endpoint->src4;
-	} else if (endpoint->addr_storage.ss_family == AF_INET6) {
+	} else if (endpoint->addr.sa_family == AF_INET6) {
 		read_lock_bh(&peer->endpoint_lock);
 		if (likely(peer->endpoint.addr6.sin6_family == AF_INET6 &&
 			   peer->endpoint.addr6.sin6_port == endpoint->addr6.sin6_port &&
@@ -253,6 +253,14 @@ void socket_set_peer_endpoint(struct wireguard_peer *peer, struct endpoint *endp
 	return;
 out:
 	read_unlock_bh(&peer->endpoint_lock);
+}
+
+void socket_clear_peer_endpoint_src(struct wireguard_peer *peer)
+{
+	write_lock_bh(&peer->endpoint_lock);
+	memset(&peer->endpoint.src6, 0, sizeof(peer->endpoint.src6));
+	dst_cache_reset(&peer->endpoint_cache);
+	write_unlock_bh(&peer->endpoint_lock);
 }
 
 static int receive(struct sock *sk, struct sk_buff *skb)
@@ -281,9 +289,9 @@ err:
  * blahbla --> 51820
  * 50 --> 51870
  */
-static uint16_t generate_default_incoming_port(struct wireguard_device *wg)
+static u16 generate_default_incoming_port(struct wireguard_device *wg)
 {
-	uint16_t port = 51820;
+	u16 port = 51820;
 	unsigned long parsed;
 	char *name, *digit_begin;
 	size_t len;

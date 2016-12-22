@@ -16,17 +16,17 @@
 #include <crypto/algapi.h>
 
 struct encryption_skb_cb {
-	uint8_t ds;
-	uint8_t num_frags;
+	u8 ds;
+	u8 num_frags;
 	unsigned int plaintext_len, trailer_len;
 	struct sk_buff *trailer;
-	uint64_t nonce;
+	u64 nonce;
 };
 
 struct encryption_ctx {
 	struct padata_priv padata;
 	struct sk_buff_head queue;
-	void (*callback)(struct sk_buff_head *, struct wireguard_peer *);
+	packet_create_data_callback_t callback;
 	struct wireguard_peer *peer;
 	struct noise_keypair *keypair;
 };
@@ -34,12 +34,12 @@ struct encryption_ctx {
 struct decryption_ctx {
 	struct padata_priv padata;
 	struct sk_buff *skb;
-	void (*callback)(struct sk_buff *skb, struct wireguard_peer *, struct endpoint *, bool used_new_key, int err);
+	packet_consume_data_callback_t callback;
 	struct noise_keypair *keypair;
 	struct endpoint endpoint;
-	uint64_t nonce;
-	uint8_t num_frags;
+	u64 nonce;
 	int ret;
+	u8 num_frags;
 };
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
@@ -122,6 +122,12 @@ static inline void skb_reset(struct sk_buff *skb)
 	skb->peeked = 0;
 	skb->mac_len = 0;
 	skb->dev = NULL;
+#ifdef CONFIG_NET_SCHED
+	skb->tc_index = 0;
+#ifdef CONFIG_NET_CLS_ACT
+	skb->tc_verd = 0;
+#endif
+#endif
 	skb->hdr_len = skb_headroom(skb);
 	skb_reset_mac_header(skb);
 	skb_reset_network_header(skb);
@@ -140,7 +146,7 @@ static inline void skb_encrypt(struct sk_buff *skb, struct noise_keypair *keypai
 
 	/* Only after checksumming can we safely add on the padding at the end and the header. */
 	header = (struct message_data *)skb_push(skb, sizeof(struct message_data));
-	header->header.type = MESSAGE_DATA;
+	header->header.type = cpu_to_le32(MESSAGE_DATA);
 	header->key_idx = keypair->remote_index;
 	header->counter = cpu_to_le64(cb->nonce);
 	pskb_put(skb, cb->trailer, cb->trailer_len);
@@ -151,7 +157,7 @@ static inline void skb_encrypt(struct sk_buff *skb, struct noise_keypair *keypai
 	chacha20poly1305_encrypt_sg(sg, sg, cb->plaintext_len, NULL, 0, cb->nonce, keypair->sending.key, have_simd);
 }
 
-static inline bool skb_decrypt(struct sk_buff *skb, uint8_t num_frags, uint64_t nonce, struct noise_symmetric_key *key)
+static inline bool skb_decrypt(struct sk_buff *skb, u8 num_frags, u64 nonce, struct noise_symmetric_key *key)
 {
 	struct scatterlist sg[num_frags]; /* This should be bound to at most 128 by the caller. */
 
@@ -172,7 +178,7 @@ static inline bool skb_decrypt(struct sk_buff *skb, uint8_t num_frags, uint64_t 
 	return pskb_trim(skb, skb->len - noise_encrypted_len(0)) == 0;
 }
 
-static inline bool get_encryption_nonce(uint64_t *nonce, struct noise_symmetric_key *key)
+static inline bool get_encryption_nonce(u64 *nonce, struct noise_symmetric_key *key)
 {
 	if (unlikely(!key))
 		return false;
@@ -244,7 +250,7 @@ static inline unsigned int choose_cpu(__le32 key)
 }
 #endif
 
-int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer, void(*callback)(struct sk_buff_head *, struct wireguard_peer *))
+int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer, packet_create_data_callback_t callback)
 {
 	int ret = -ENOKEY;
 	struct noise_keypair *keypair;
@@ -403,7 +409,7 @@ static inline int start_decryption(struct padata_instance *padata, struct padata
 }
 #endif
 
-void packet_consume_data(struct sk_buff *skb, size_t offset, struct wireguard_device *wg, void(*callback)(struct sk_buff *skb, struct wireguard_peer *, struct endpoint *, bool used_new_key, int err))
+void packet_consume_data(struct sk_buff *skb, size_t offset, struct wireguard_device *wg, packet_consume_data_callback_t callback)
 {
 	int ret;
 	struct endpoint endpoint;
@@ -411,7 +417,7 @@ void packet_consume_data(struct sk_buff *skb, size_t offset, struct wireguard_de
 	struct sk_buff *trailer;
 	struct message_data *header;
 	struct noise_keypair *keypair;
-	uint64_t nonce;
+	u64 nonce;
 	__le32 idx;
 
 	ret = socket_endpoint_from_skb(&endpoint, skb);

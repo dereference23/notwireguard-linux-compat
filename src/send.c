@@ -27,7 +27,7 @@ static void packet_send_handshake_initiation(struct wireguard_peer *peer)
 	peer->last_sent_handshake = get_jiffies_64();
 	up_write(&peer->handshake.lock);
 
-	net_dbg_ratelimited("Sending handshake initiation to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+	net_dbg_ratelimited("Sending handshake initiation to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 
 	if (noise_handshake_create_initiation(&packet, &peer->handshake)) {
 		cookie_add_mac_to_packet(&packet, sizeof(packet), peer);
@@ -64,7 +64,7 @@ void packet_send_handshake_response(struct wireguard_peer *peer)
 {
 	struct message_handshake_response packet;
 
-	net_dbg_ratelimited("Sending handshake response to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+	net_dbg_ratelimited("Sending handshake response to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 	peer->last_sent_handshake = get_jiffies_64();
 
 	if (noise_handshake_create_response(&packet, &peer->handshake)) {
@@ -113,7 +113,7 @@ void packet_send_keepalive(struct wireguard_peer *peer)
 		skb_reserve(skb, DATA_PACKET_HEAD_ROOM);
 		skb->dev = netdev_pub(peer->device);
 		skb_queue_tail(&peer->tx_packet_queue, skb);
-		net_dbg_ratelimited("Sending keepalive packet to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr_storage);
+		net_dbg_ratelimited("Sending keepalive packet to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
 	}
 	packet_send_queue(peer);
 }
@@ -138,7 +138,7 @@ static void message_create_data_done(struct sk_buff_head *queue, struct wireguar
 		packet_send_queue(peer);
 }
 
-int packet_send_queue(struct wireguard_peer *peer)
+void packet_send_queue(struct wireguard_peer *peer)
 {
 	struct sk_buff_head queue;
 	unsigned long flags;
@@ -152,7 +152,7 @@ int packet_send_queue(struct wireguard_peer *peer)
 	spin_unlock_irqrestore(&peer->tx_packet_queue.lock, flags);
 
 	if (unlikely(!skb_queue_len(&queue)))
-		return NETDEV_TX_OK;
+		return;
 
 	/* We submit it for encryption and sending. */
 	switch (packet_create_data(&queue, peer, message_create_data_done)) {
@@ -189,5 +189,4 @@ int packet_send_queue(struct wireguard_peer *peer)
 		 * a reference to the local queue. */
 		__skb_queue_purge(&queue);
 	}
-	return NETDEV_TX_OK;
 }
