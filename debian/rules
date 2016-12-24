@@ -8,11 +8,8 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 %:
 	dh $@ --with dkms
 
-override_dh_auto_build: src/version.h
+override_dh_auto_build:
 	$(MAKE) -C src/tools
 
 override_dh_dkms:
 	dh_dkms -V
-
-src/version.h:
-	echo '#define WIREGUARD_VERSION "'$(shell dpkg-parsechangelog -S Version)'"' > $@
