@@ -1,3 +1,11 @@
+wireguard (0.0.20161223-1) unstable; urgency=medium
+
+  * New upstream release.
+  * use uptream's install-dkms Makefile target and dkms.conf instead of
+    maintaining our own.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 24 Dec 2016 16:58:46 -0500
+
 wireguard (0.0.20161218-1) unstable; urgency=medium
 
   * New upstream release.
