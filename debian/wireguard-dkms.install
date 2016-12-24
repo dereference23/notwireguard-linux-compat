@@ -1,3 +1,0 @@
-#!/usr/bin/dh-exec
-src/*.c src/*.h src/selftest/ src/crypto/ usr/src/wireguard-${DEB_VERSION_UPSTREAM}
-src/Kbuild src/Kconfig src/Makefile usr/src/wireguard-${DEB_VERSION_UPSTREAM}

@@ -4,7 +4,6 @@ Priority: extra
 Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends:
  debhelper (>= 10~),
- dh-exec,
  dkms,
  libmnl-dev,
  pkg-config

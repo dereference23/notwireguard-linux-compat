@@ -1,15 +1,17 @@
 #!/usr/bin/make -f
 
 include /usr/share/dpkg/default.mk
-export DEB_VERSION_UPSTREAM
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 %:
 	dh $@ --with dkms
 
-override_dh_auto_build:
+override_dh_auto_install-indep:
+	$(MAKE) -C src DESTDIR=../debian/wireguard-dkms DKMSDIR=/usr/src/wireguard-$(DEB_VERSION_UPSTREAM)/ dkms-install
+
+override_dh_auto_build-arch:
 	$(MAKE) -C src/tools
 
 override_dh_dkms:
-	dh_dkms -V
+	dh_dkms -p wireguard-dkms -- src/dkms.conf
