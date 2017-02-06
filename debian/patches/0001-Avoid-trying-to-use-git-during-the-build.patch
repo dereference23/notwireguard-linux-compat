@@ -1,0 +1,38 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 6 Feb 2017 05:09:47 -0500
+Subject: Avoid trying to use git during the build.
+
+Upstream Makefile is too-clever by half.  We want to know the version
+during the debian build, we'll use the debian version.
+---
+ src/Makefile | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/src/Makefile b/src/Makefile
+index 7873007..60545d5 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -10,19 +10,15 @@ all: module tools
+ debug: module-debug tools
+ 
+ version.h:
+-	@export GIT_CEILING_DIRECTORIES="$$(readlink -f ../..)" && \
+-	ver="#define WIREGUARD_VERSION \"$$(git describe --dirty 2>/dev/null)\"" && \
++	ver="#define WIREGUARD_VERSION \"$$(cd .. && dpkg-parsechangelog -S Version)\"" && \
+ 	[ "$$(cat version.h 2>/dev/null)" != "$$ver" ] && \
+-	echo "$$ver" > version.h && \
+-	git update-index --assume-unchanged version.h || true
++	echo "$$ver" > version.h || true
+ 
+ dkms.conf:
+-	@export GIT_CEILING_DIRECTORIES="$$(readlink -f ../..)" && \
+-	ver="$$(git describe --dirty 2>/dev/null)" && \
++	ver="$$(cd .. && dpkg-parsechangelog -S Version)" && \
+ 	. ./dkms.conf && \
+ 	[ "$$PACKAGE_VERSION" != "$$ver" ] && \
+-	sed -i "s/PACKAGE_VERSION=.*/PACKAGE_VERSION=\"$$ver\"/" dkms.conf && \
+-	git update-index --assume-unchanged dkms.conf || true
++	sed -i "s/PACKAGE_VERSION=.*/PACKAGE_VERSION=\"$$ver\"/" dkms.conf || true
+ 
+ module: version.h
+ 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
