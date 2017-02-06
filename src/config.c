@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
+/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
 #include "config.h"
 #include "device.h"
@@ -59,7 +59,7 @@ static int set_peer(struct wireguard_device *wg, void __user *user_peer, size_t 
 
 	peer = pubkey_hashtable_lookup(&wg->peer_hashtable, in_peer.public_key);
 	if (!peer) { /* Peer doesn't exist yet. Add a new one. */
-		if (in_peer.remove_me)
+		if (in_peer.flags & WGPEER_REMOVE_ME)
 			return -ENODEV; /* Tried to remove a non existing peer. */
 		peer = peer_rcu_get(peer_create(wg, in_peer.public_key));
 		if (!peer)
@@ -68,22 +68,19 @@ static int set_peer(struct wireguard_device *wg, void __user *user_peer, size_t 
 			timers_init_peer(peer);
 	}
 
-	if (in_peer.remove_me) {
+	if (in_peer.flags & WGPEER_REMOVE_ME) {
 		peer_put(peer);
 		peer_remove(peer);
 		goto out;
 	}
 
-	if (in_peer.endpoint.ss_family == AF_INET || in_peer.endpoint.ss_family == AF_INET6) {
-		struct endpoint endpoint = { { { 0 } } };
-		if (in_peer.endpoint.ss_family == AF_INET)
-			endpoint.addr4 = *(struct sockaddr_in *)&in_peer.endpoint;
-		else if (in_peer.endpoint.ss_family == AF_INET6)
-			endpoint.addr6 = *(struct sockaddr_in6 *)&in_peer.endpoint;
+	if (in_peer.endpoint.addr.sa_family == AF_INET || in_peer.endpoint.addr.sa_family == AF_INET6) {
+		struct endpoint endpoint = { 0 };
+		memcpy(&endpoint, &in_peer.endpoint, sizeof(in_peer.endpoint));
 		socket_set_peer_endpoint(peer, &endpoint);
 	}
 
-	if (in_peer.replace_ipmasks)
+	if (in_peer.flags & WGPEER_REPLACE_IPMASKS)
 		routing_table_remove_by_peer(&wg->peer_routing_table, peer);
 	for (i = 0, user_ipmask = user_peer + sizeof(struct wgpeer); i < in_peer.num_ipmasks; ++i, user_ipmask += sizeof(struct wgipmask)) {
 		ret = set_ipmask(peer, user_ipmask);
@@ -134,10 +131,10 @@ int config_set_device(struct wireguard_device *wg, void __user *user_device)
 			goto out;
 	}
 
-	if (in_device.replace_peer_list)
+	if (in_device.flags & WGDEVICE_REPLACE_PEERS)
 		peer_remove_all(wg);
 
-	if (in_device.remove_private_key) {
+	if (in_device.flags & WGDEVICE_REMOVE_PRIVATE_KEY) {
 		noise_set_static_identity_private_key(&wg->static_identity, NULL);
 		modified_static_identity = true;
 	} else if (memcmp(zeros, in_device.private_key, WG_KEY_LEN)) {
@@ -145,7 +142,7 @@ int config_set_device(struct wireguard_device *wg, void __user *user_device)
 		modified_static_identity = true;
 	}
 
-	if (in_device.remove_preshared_key) {
+	if (in_device.flags & WGDEVICE_REMOVE_PRESHARED_KEY) {
 		noise_set_static_identity_preshared_key(&wg->static_identity, NULL);
 		modified_static_identity = true;
 	} else if (memcmp(zeros, in_device.preshared_key, WG_KEY_LEN)) {
@@ -224,7 +221,6 @@ static int populate_ipmask(void *ctx, union nf_inet_addr ip, u8 cidr, int family
 	return ret;
 }
 
-
 static int populate_peer(struct wireguard_peer *peer, void *ctx)
 {
 	int ret = 0;
@@ -242,9 +238,9 @@ static int populate_peer(struct wireguard_peer *peer, void *ctx)
 	memcpy(out_peer.public_key, peer->handshake.remote_static, NOISE_PUBLIC_KEY_LEN);
 	read_lock_bh(&peer->endpoint_lock);
 	if (peer->endpoint.addr.sa_family == AF_INET)
-		*(struct sockaddr_in *)&out_peer.endpoint = peer->endpoint.addr4;
+		out_peer.endpoint.addr4 = peer->endpoint.addr4;
 	else if (peer->endpoint.addr.sa_family == AF_INET6)
-		*(struct sockaddr_in6 *)&out_peer.endpoint = peer->endpoint.addr6;
+		out_peer.endpoint.addr6 = peer->endpoint.addr6;
 	read_unlock_bh(&peer->endpoint_lock);
 	out_peer.last_handshake_time = peer->walltime_last_handshake;
 	out_peer.tx_bytes = peer->tx_bytes;
@@ -264,7 +260,6 @@ static int populate_peer(struct wireguard_peer *peer, void *ctx)
 		ret = -EFAULT;
 	return ret;
 }
-
 
 int config_get_device(struct wireguard_device *wg, void __user *udevice)
 {

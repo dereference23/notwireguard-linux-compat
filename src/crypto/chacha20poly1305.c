@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ * Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright 2015 Martin Willi.
  */
 
@@ -27,9 +27,9 @@ asmlinkage void poly1305_asm_2block_sse2(u32 *h, const u8 *src, const u32 *r, un
 #ifdef CONFIG_AS_AVX2
 asmlinkage void poly1305_asm_4block_avx2(u32 *h, const u8 *src, const u32 *r, unsigned int blocks, const u32 *u);
 #endif
-static bool chacha20poly1305_use_avx2 = false;
-static bool chacha20poly1305_use_ssse3 = false;
-static bool chacha20poly1305_use_sse2 = false;
+static bool chacha20poly1305_use_avx2 __read_mostly = false;
+static bool chacha20poly1305_use_ssse3 __read_mostly = false;
+static bool chacha20poly1305_use_sse2 __read_mostly = false;
 void chacha20poly1305_init(void)
 {
 	chacha20poly1305_use_sse2 = boot_cpu_has(X86_FEATURE_XMM2);

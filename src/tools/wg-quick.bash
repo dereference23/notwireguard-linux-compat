@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+# Copyright (C) 2016-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
 #
 
 set -e -o pipefail
@@ -27,6 +27,7 @@ parse_options() {
 	[[ $CONFIG_FILE =~ ^[a-zA-Z0-9_=+.-]{1,16}$ ]] && CONFIG_FILE="/etc/wireguard/$CONFIG_FILE.conf"
 	[[ -e $CONFIG_FILE ]] || die "\`$CONFIG_FILE' does not exist"
 	[[ $CONFIG_FILE =~ /?([a-zA-Z0-9_=+.-]{1,16})\.conf$ ]] || die "The config file must be a valid interface name, followed by .conf"
+	((($(stat -c '%#a' "$CONFIG_FILE") & 0007) == 0)) || echo "Warning: \`$CONFIG_FILE' is world accessible" >&2
 	INTERFACE="${BASH_REMATCH[1]}"
 	shopt -s nocasematch
 	while read -r line; do
@@ -79,7 +80,7 @@ add_if() {
 del_if() {
 	if [[ $(ip route show table all) =~ .*\ dev\ $INTERFACE\ table\ ([0-9]+)\ .* ]]; then
 		cmd ip rule delete table "${BASH_REMATCH[1]}"
-		cmd ip rule delete table main suppress_prefixlength 0 2>/dev/null
+		[[ $(ip rule show table main) == *"from all lookup main suppress_prefixlength 0"* ]] && cmd ip rule delete table main suppress_prefixlength 0
 	fi
 	cmd ip link delete dev "$INTERFACE"
 }
@@ -101,7 +102,7 @@ add_route() {
 }
 
 add_default() {
-	[[ $(join <(wg show "$INTERFACE" allowed-ips) <(wg show "$INTERFACE" endpoints)) =~ .*\ ${1//./\\.}\ ([0-9.:a-f]+):[0-9]+$ ]] && local endpoint="${BASH_REMATCH[1]}"
+	[[ $(join <(wg show "$INTERFACE" allowed-ips) <(wg show "$INTERFACE" endpoints)) =~ .*\ ${1//./\\.}\ \[?([0-9.:a-f]+)\]?:[0-9]+$ ]] && local endpoint="${BASH_REMATCH[1]}"
 	[[ -n $endpoint ]] || return 0
 	local table=51820
 	while [[ -n $(ip route show table $table) ]]; do ((table++)); done

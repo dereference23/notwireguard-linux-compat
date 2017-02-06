@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
+/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
 
 #include <arpa/inet.h>
@@ -119,7 +119,7 @@ static inline bool parse_ip(struct wgipmask *ipmask, const char *value)
 	return true;
 }
 
-static inline bool parse_endpoint(struct sockaddr_storage *endpoint, const char *value)
+static inline bool parse_endpoint(struct sockaddr *endpoint, const char *value)
 {
 	char *mutable = strdup(value);
 	char *begin, *end;
@@ -213,7 +213,7 @@ static inline bool parse_ipmasks(struct inflatable_device *buf, size_t peer_offs
 		return false;
 	};
 	peer = peer_from_offset(buf->dev, peer_offset);
-	peer->replace_ipmasks = true;
+	peer->flags |= WGPEER_REPLACE_IPMASKS;
 	if (!strlen(value)) {
 		free(mutable);
 		return true;
@@ -271,7 +271,7 @@ static bool process_line(struct config_ctx *ctx, const char *line)
 		++ctx->buf.dev->num_peers;
 		ctx->is_peer_section = true;
 		ctx->is_device_section = false;
-		peer_from_offset(ctx->buf.dev, ctx->peer_offset)->replace_ipmasks = true;
+		peer_from_offset(ctx->buf.dev, ctx->peer_offset)->flags |= WGPEER_REPLACE_IPMASKS;
 		peer_from_offset(ctx->buf.dev, ctx->peer_offset)->persistent_keepalive_interval = (__u16)-1;
 		return true;
 	}
@@ -293,7 +293,7 @@ static bool process_line(struct config_ctx *ctx, const char *line)
 			goto error;
 	} else if (ctx->is_peer_section) {
 		if (key_match("Endpoint"))
-			ret = parse_endpoint(&peer_from_offset(ctx->buf.dev, ctx->peer_offset)->endpoint, value);
+			ret = parse_endpoint(&peer_from_offset(ctx->buf.dev, ctx->peer_offset)->endpoint.addr, value);
 		else if (key_match("PublicKey"))
 			ret = parse_key(peer_from_offset(ctx->buf.dev, ctx->peer_offset)->public_key, value);
 		else if (key_match("AllowedIPs"))
@@ -347,7 +347,8 @@ bool config_read_init(struct config_ctx *ctx, struct wgdevice **device, bool app
 		perror("calloc");
 		return false;
 	}
-	ctx->buf.dev->replace_peer_list = !append;
+	if (!append)
+		ctx->buf.dev->flags |= WGDEVICE_REPLACE_PEERS;
 	return true;
 }
 
@@ -361,11 +362,11 @@ bool config_read_finish(struct config_ctx *ctx)
 {
 	size_t i;
 	struct wgpeer *peer;
-	if (ctx->buf.dev->replace_peer_list && !ctx->buf.dev->num_peers) {
+	if (ctx->buf.dev->flags & WGDEVICE_REPLACE_PEERS && !ctx->buf.dev->num_peers) {
 		fprintf(stderr, "No peers configured\n");
 		goto err;
 	}
-	if (ctx->buf.dev->replace_peer_list && !key_is_valid(ctx->buf.dev->private_key)) {
+	if (ctx->buf.dev->flags & WGDEVICE_REPLACE_PEERS && !key_is_valid(ctx->buf.dev->private_key)) {
 		fprintf(stderr, "No private key configured\n");
 		goto err;
 	}
@@ -462,7 +463,7 @@ bool config_read_cmd(struct wgdevice **device, char *argv[], int argc)
 				}
 				free(line);
 			} else if (ret == 1)
-				buf.dev->remove_private_key = true;
+				buf.dev->flags |= WGDEVICE_REMOVE_PRIVATE_KEY;
 			else
 				goto error;
 			argv += 2;
@@ -477,7 +478,7 @@ bool config_read_cmd(struct wgdevice **device, char *argv[], int argc)
 				}
 				free(line);
 			} else if (ret == 1)
-				buf.dev->remove_preshared_key = true;
+				buf.dev->flags |= WGDEVICE_REMOVE_PRESHARED_KEY;
 			else
 				goto error;
 			argv += 2;
@@ -495,11 +496,11 @@ bool config_read_cmd(struct wgdevice **device, char *argv[], int argc)
 			argv += 2;
 			argc -= 2;
 		} else if (!strcmp(argv[0], "remove") && argc >= 1 && buf.dev->num_peers) {
-			peer_from_offset(buf.dev, peer_offset)->remove_me = true;
+			peer_from_offset(buf.dev, peer_offset)->flags |= WGPEER_REMOVE_ME;
 			argv += 1;
 			argc -= 1;
 		} else if (!strcmp(argv[0], "endpoint") && argc >= 2 && buf.dev->num_peers) {
-			if (!parse_endpoint(&peer_from_offset(buf.dev, peer_offset)->endpoint, argv[1]))
+			if (!parse_endpoint(&peer_from_offset(buf.dev, peer_offset)->endpoint.addr, argv[1]))
 				goto error;
 			argv += 2;
 			argc -= 2;

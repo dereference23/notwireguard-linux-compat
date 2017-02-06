@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
+/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
 #include "ratelimiter.h"
 #include "peer.h"
@@ -8,13 +8,13 @@
 #include <linux/netfilter/x_tables.h>
 #include <net/ip.h>
 
-static struct xt_match *v4_match;
+static struct xt_match *v4_match __read_mostly;
 #if IS_ENABLED(CONFIG_IPV6)
-static struct xt_match *v6_match;
+static struct xt_match *v6_match __read_mostly;
 #endif
 
 enum {
-	RATELIMITER_PACKETS_PER_SECOND = 75,
+	RATELIMITER_PACKETS_PER_SECOND = 30,
 	RATELIMITER_PACKETS_BURSTABLE = 5
 };
 
@@ -26,7 +26,7 @@ static inline void cfg_init(struct hashlimit_cfg1 *cfg, int family)
 	else if (family == NFPROTO_IPV6)
 		cfg->srcmask = 96;
 	cfg->mode = XT_HASHLIMIT_HASH_SIP; /* source IP only -- we could also do source port by ORing this with XT_HASHLIMIT_HASH_SPT */
-	cfg->avg = XT_HASHLIMIT_SCALE / RATELIMITER_PACKETS_PER_SECOND; /* 75 per second per IP */
+	cfg->avg = XT_HASHLIMIT_SCALE / RATELIMITER_PACKETS_PER_SECOND; /* 30 per second per IP */
 	cfg->burst = RATELIMITER_PACKETS_BURSTABLE; /* Allow bursts of 5 at a time */
 	cfg->gc_interval = 1000; /* same as expiration date */
 	cfg->expire = 1000; /* Units of avg (seconds = 1) times 1000 */

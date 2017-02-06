@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2016 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
+/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
 #include "noise.h"
 #include "device.h"
@@ -43,8 +43,8 @@ struct decryption_ctx {
 };
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
-static struct kmem_cache *encryption_ctx_cache;
-static struct kmem_cache *decryption_ctx_cache;
+static struct kmem_cache *encryption_ctx_cache __read_mostly;
+static struct kmem_cache *decryption_ctx_cache __read_mostly;
 
 int packet_init_data_caches(void)
 {
