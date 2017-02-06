@@ -10,7 +10,7 @@ WIREGUARD_ARGS = WITH_BASHCOMPLETION=yes WITH_WGQUICK=yes WITH_SYSTEMDUNITS=yes
 	dh $@ --with dkms
 
 override_dh_auto_install-indep:
-	$(MAKE) -C src DESTDIR=../debian/wireguard-dkms DKMSDIR=/usr/src/wireguard-$(DEB_VERSION_UPSTREAM)/ dkms-install
+	$(MAKE) -C src DESTDIR=../debian/wireguard-dkms DKMSDIR=/usr/src/wireguard-$(DEB_VERSION)/ dkms-install
 
 override_dh_auto_build-arch:
 	$(MAKE) -C src/tools $(WIREGUARD_ARGS)
