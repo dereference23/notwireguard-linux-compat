@@ -6,7 +6,6 @@
 #include "packets.h"
 #include "crypto/chacha20poly1305.h"
 #include "crypto/blake2s.h"
-#include "crypto/siphash.h"
 #include "crypto/curve25519.h"
 
 #include <linux/version.h>
@@ -19,7 +18,7 @@ static int __init mod_init(void)
 	int ret;
 
 #ifdef DEBUG
-	if (!routing_table_selftest() || !packet_counter_selftest() || !curve25519_selftest() || !chacha20poly1305_selftest() || !blake2s_selftest() || !siphash_selftest())
+	if (!routing_table_selftest() || !packet_counter_selftest() || !curve25519_selftest() || !chacha20poly1305_selftest() || !blake2s_selftest())
 		return -ENOTRECOVERABLE;
 #endif
 	chacha20poly1305_init();
@@ -68,4 +67,5 @@ module_exit(mod_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_DESCRIPTION("Fast, secure, and modern VPN tunnel");
 MODULE_AUTHOR("Jason A. Donenfeld <Jason@zx2c4.com>");
-MODULE_ALIAS_RTNL_LINK(KBUILD_MODNAME);
+MODULE_ALIAS_RTNL_LINK("wireguard");
+MODULE_ALIAS_RTNL_LINK("wg");

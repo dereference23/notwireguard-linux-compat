@@ -53,7 +53,7 @@ static int clear_noise_peer(struct wireguard_peer *peer, void *data)
 {
 	noise_handshake_clear(&peer->handshake);
 	noise_keypairs_clear(&peer->keypairs);
-	if (peer->timer_kill_ephemerals.data)
+	if (peer->timers_enabled)
 		del_timer(&peer->timer_kill_ephemerals);
 	return 0;
 }
@@ -72,7 +72,7 @@ static int suspending_clear_noise_peers(struct notifier_block *nb, unsigned long
 
 static int stop_peer(struct wireguard_peer *peer, void *data)
 {
-	timers_uninit_peer_wait(peer);
+	timers_uninit_peer(peer);
 	clear_noise_peer(peer, data);
 	return 0;
 }
@@ -291,12 +291,12 @@ static int newlink(struct net *src_net, struct net_device *dev, struct nlattr *t
 	if (!dev->tstats)
 		goto error_1;
 
-	wg->workqueue = alloc_workqueue(KBUILD_MODNAME "-%s", WQ_UNBOUND | WQ_FREEZABLE, 0, dev->name);
+	wg->workqueue = alloc_workqueue("wg-%s", WQ_UNBOUND | WQ_FREEZABLE, 0, dev->name);
 	if (!wg->workqueue)
 		goto error_2;
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
-	wg->parallelqueue = alloc_workqueue(KBUILD_MODNAME "-crypt-%s", WQ_CPU_INTENSIVE | WQ_MEM_RECLAIM, 1, dev->name);
+	wg->parallelqueue = alloc_workqueue("wg-crypt-%s", WQ_CPU_INTENSIVE | WQ_MEM_RECLAIM, 1, dev->name);
 	if (!wg->parallelqueue)
 		goto error_3;
 

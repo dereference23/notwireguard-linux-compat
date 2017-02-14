@@ -5,6 +5,7 @@
 
 set -e -o pipefail
 shopt -s extglob
+export LC_ALL=C
 
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 export PATH="${SELF%/*}:$PATH"
@@ -78,9 +79,16 @@ add_if() {
 }
 
 del_if() {
-	if [[ $(ip route show table all) =~ .*\ dev\ $INTERFACE\ table\ ([0-9]+)\ .* ]]; then
-		cmd ip rule delete table "${BASH_REMATCH[1]}"
-		[[ $(ip rule show table main) == *"from all lookup main suppress_prefixlength 0"* ]] && cmd ip rule delete table main suppress_prefixlength 0
+	DEFAULT_TABLE=$(("$(wg show "$INTERFACE" fwmark)"))
+	if [[ $DEFAULT_TABLE -ne 0 ]]; then
+		while [[ -n $(ip -4 rule show table $DEFAULT_TABLE) ]]; do
+			cmd ip -4 rule delete table $DEFAULT_TABLE
+			[[ $(ip -4 rule show table main) == *"from all lookup main suppress_prefixlength 0"* ]] && cmd ip -4 rule delete table main suppress_prefixlength 0
+		done
+		while [[ -n $(ip -6 rule show table $DEFAULT_TABLE) ]]; do
+			cmd ip -6 rule delete table $DEFAULT_TABLE
+			[[ $(ip -6 rule show table main) == *"from all lookup main suppress_prefixlength 0"* ]] && cmd ip -6 rule delete table main suppress_prefixlength 0
+		done
 	fi
 	cmd ip link delete dev "$INTERFACE"
 }
@@ -101,14 +109,23 @@ add_route() {
 	fi
 }
 
+DEFAULT_TABLE=
 add_default() {
-	[[ $(join <(wg show "$INTERFACE" allowed-ips) <(wg show "$INTERFACE" endpoints)) =~ .*\ ${1//./\\.}\ \[?([0-9.:a-f]+)\]?:[0-9]+$ ]] && local endpoint="${BASH_REMATCH[1]}"
-	[[ -n $endpoint ]] || return 0
-	local table=51820
-	while [[ -n $(ip route show table $table) ]]; do ((table++)); done
-	cmd ip route add "$1" dev "$INTERFACE" table $table
-	cmd ip rule add not to "$endpoint" table $table
-	cmd ip rule add table main suppress_prefixlength 0
+	if [[ -z $DEFAULT_TABLE ]]; then
+		DEFAULT_TABLE=51820
+		while [[ -n $(ip route show table $DEFAULT_TABLE) ]]; do ((DEFAULT_TABLE++)); done
+	fi
+	local proto=-4
+	[[ $1 == *:* ]] && proto=-6
+	cmd wg set "$INTERFACE" fwmark $DEFAULT_TABLE
+	cmd ip $proto route add "$1" dev "$INTERFACE" table $DEFAULT_TABLE
+	cmd ip $proto rule add not fwmark $DEFAULT_TABLE table $DEFAULT_TABLE
+	cmd ip $proto rule add table main suppress_prefixlength 0
+	local key equals value
+	while read -r key equals value; do
+		[[ $value -eq 1 ]] && sysctl -q "$key=2"
+	done < <(sysctl -a -r 'net\.ipv4.conf\..+\.rp_filter')
+	return 0
 }
 
 set_config() {
