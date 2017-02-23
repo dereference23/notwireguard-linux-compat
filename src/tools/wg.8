@@ -36,14 +36,20 @@ Sub-commands that take an INTERFACE must be passed a WireGuard interface.
 .SH COMMANDS
 
 .TP
-\fBshow\fP { \fI<interface>\fP | \fIall\fP | \fIinterfaces\fP } [\fIpublic-key\fP | \fIprivate-key\fP | \fIpreshared-key\fP | \fIlisten-port\fP | \fIfwmark\fP | \fIpeers\fP | \fIendpoints\fP | \fIallowed-ips\fP | \fIlatest-handshakes\fP | \fIpersistent-keepalive\fP | \fItransfer\fP]
+\fBshow\fP { \fI<interface>\fP | \fIall\fP | \fIinterfaces\fP } [\fIpublic-key\fP | \fIprivate-key\fP | \fIpreshared-key\fP | \fIlisten-port\fP | \fIfwmark\fP | \fIpeers\fP | \fIendpoints\fP | \fIallowed-ips\fP | \fIlatest-handshakes\fP | \fIpersistent-keepalive\fP | \fItransfer\fP | \fIdump\fP]
 Shows current WireGuard configuration of specified \fI<interface>\fP.
 If no \fI<interface>\fP is specified, \fI<interface>\fP defaults to \fIall\fP.
 If \fIinterfaces\fP is specified, prints a list of all WireGuard interfaces,
 one per line, and quit. If no options are given after the interface
 specification, then prints a list of all attributes in a visually pleasing way
 meant for the terminal. Otherwise, prints specified information grouped by
-newlines and tabs, meant to be used in scripts.
+newlines and tabs, meant to be used in scripts. For this script-friendly display,
+if \fIall\fP is specified, then the first field for all categories of information
+is the interface name. If \fPdump\fP is specified, then several lines are printed;
+the first contains in order separated by tab: private-key, public-key, preshared-key,
+listen-port, fwmark. Subsequent lines are printed for each peer and contain in order
+separated by tab: public-key, endpoint, allowed-ips, latest-handshake, transfer-rx,
+transfer-tx, persistent-keepalive.
 .TP
 \fBshowconf\fP \fI<interface>\fP
 Shows the current configuration of \fI<interface>\fP in the format described
@@ -67,14 +73,16 @@ it adds an additional layer of symmetric-key cryptography to be mixed into
 the already existing public-key cryptography, for post-quantum resistance.
 If \fIallowed-ips\fP is specified, but the value is the empty string, all
 allowed ips are removed from the peer. The use of \fIpersistent-keepalive\fP
-is optional and is by default off; setting it to 0 or "off", disables it.
+is optional and is by default off; setting it to 0 or "off" disables it.
 Otherwise it represents, in seconds, between 1 and 65535 inclusive, how often
 to send an authenticated empty packet to the peer, for the purpose of keeping
 a stateful firewall or NAT mapping valid persistently. For example, if the
 interface very rarely sends traffic, but it might at anytime receive traffic
 from a peer, and it is behind NAT, the interface might benefit from having a
 persistent keepalive interval of 25 seconds; however, most users will not need
-this.
+this. The use of \fIfwmark\fP is optional and is by default off; setting it to
+0 or "off" disables it. Otherwise it is a 32-bit fwmark for outgoing packets
+and may be specified in hexadecimal by prepending "0x".
 .TP
 \fBsetconf\fP \fI<interface>\fP \fI<configuration-filename>\fP
 Sets the current configuration of \fI<interface>\fP to the contents of
@@ -126,7 +134,8 @@ for post-quantum resistance.
 ListenPort \(em a 16-bit port for listening. Optional; if not specified, chosen
 randomly.
 .IP \(bu
-FwMark \(em a 32-bit fwmark for outgoing packets. Optional.
+FwMark \(em a 32-bit fwmark for outgoing packets. If set to 0 or "off", this
+option is disabled. May be specified in hexadecimal by prepending "0x". Optional.
 .P
 The \fIPeer\fP sections may contain the following fields:
 .IP \(bu

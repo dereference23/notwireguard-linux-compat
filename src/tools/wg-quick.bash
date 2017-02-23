@@ -31,7 +31,7 @@ parse_options() {
 	((($(stat -c '%#a' "$CONFIG_FILE") & 0007) == 0)) || echo "Warning: \`$CONFIG_FILE' is world accessible" >&2
 	INTERFACE="${BASH_REMATCH[1]}"
 	shopt -s nocasematch
-	while read -r line; do
+	while read -r line || [[ -n $line ]]; do
 		key="${line%%=*}"; key="${key##*( )}"; key="${key%%*( )}"
 		value="${line#*=}"; value="${value##*( )}"; value="${value%%*( )}"
 		[[ $key == "["* ]] && interface_section=0
@@ -79,7 +79,9 @@ add_if() {
 }
 
 del_if() {
-	DEFAULT_TABLE=$(( $(wg show "$INTERFACE" fwmark) ))
+	local fwmark="$(wg show "$INTERFACE" fwmark)"
+	DEFAULT_TABLE=0
+	[[ $fwmark != off ]] && DEFAULT_TABLE=$(( $fwmark ))
 	if [[ $DEFAULT_TABLE -ne 0 ]]; then
 		while [[ -n $(ip -4 rule show table $DEFAULT_TABLE) ]]; do
 			cmd ip -4 rule delete table $DEFAULT_TABLE

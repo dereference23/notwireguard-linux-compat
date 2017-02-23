@@ -1,6 +1,8 @@
 # Copyright (C) 2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
 
 _wg_completion() {
+	local a
+
 	if [[ $COMP_CWORD -eq 1 ]]; then
 		COMPREPLY+=( $(compgen -W "show showconf set setconf addconf genkey genpsk pubkey" -- "${COMP_WORDS[1]}") )
 		return
@@ -19,13 +21,14 @@ _wg_completion() {
 	fi
 
 	if [[ $COMP_CWORD -eq 3 && ${COMP_WORDS[1]} == show && ${COMP_WORDS[2]} != interfaces ]]; then
-		COMPREPLY+=( $(compgen -W "public-key private-key preshared-key listen-port peers endpoints allowed-ips fwmark latest-handshakes persistent-keepalive transfer" -- "${COMP_WORDS[3]}") )
+		COMPREPLY+=( $(compgen -W "public-key private-key preshared-key listen-port peers endpoints allowed-ips fwmark latest-handshakes persistent-keepalive transfer dump" -- "${COMP_WORDS[3]}") )
 		return
 	fi
 
 	if [[ $COMP_CWORD -eq 3 && ( ${COMP_WORDS[1]} == setconf || ${COMP_WORDS[1]} == addconf ) ]]; then
 		compopt -o filenames
-		COMPREPLY+=( $(compgen -f -- "${COMP_WORDS[3]}") )
+		mapfile -t a < <(compgen -f -- "${COMP_WORDS[3]}")
+		COMPREPLY+=( "${a[@]}" )
 		return
 	fi
 
@@ -49,7 +52,8 @@ _wg_completion() {
 			COMPREPLY+=( $(compgen -W "${words[*]}" -- "${COMP_WORDS[COMP_CWORD]}") )
 		elif [[ ${COMP_WORDS[COMP_CWORD-1]} == *-key ]]; then
 			compopt -o filenames
-			COMPREPLY+=( $(compgen -f -- "${COMP_WORDS[COMP_CWORD]}") )
+			mapfile -t a < <(compgen -f -- "${COMP_WORDS[COMP_CWORD]}")
+			COMPREPLY+=( "${a[@]}" )
 		fi
 		return
 	fi
