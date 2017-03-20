@@ -17,6 +17,86 @@ static __always_inline void normalize_secret(u8 secret[CURVE25519_POINT_SIZE])
 	secret[31] |= 64;
 }
 
+#ifdef CONFIG_X86_64
+#include <asm/cpufeature.h>
+#include <asm/processor.h>
+#include <asm/fpu/api.h>
+#include <asm/simd.h>
+static bool curve25519_use_avx __read_mostly = false;
+void curve25519_fpu_init(void)
+{
+	curve25519_use_avx = boot_cpu_has(X86_FEATURE_AVX);
+}
+
+typedef u64 fe[10];
+typedef u64 fe51[5];
+asmlinkage void curve25519_sandy2x_ladder(fe *, const u8 *);
+asmlinkage void curve25519_sandy2x_ladder_base(fe *, const u8 *);
+asmlinkage void curve25519_sandy2x_fe_frombytes(fe, const u8 *);
+asmlinkage void curve25519_sandy2x_fe51_pack(u8 *, const fe51 *);
+asmlinkage void curve25519_sandy2x_fe51_mul(fe51 *, const fe51 *, const fe51 *);
+asmlinkage void curve25519_sandy2x_fe51_invert(fe51 *, const fe51 *);
+
+static void curve25519_sandy2x(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE], const u8 basepoint[CURVE25519_POINT_SIZE])
+{
+	u8 e[32];
+	fe var[3];
+	fe51 x_51, z_51;
+	memcpy(e, secret, 32);
+	normalize_secret(e);
+#define x1 var[0]
+#define x2 var[1]
+#define z2 var[2]
+	curve25519_sandy2x_fe_frombytes(x1, basepoint);
+	curve25519_sandy2x_ladder(var, e);
+	z_51[0] = (z2[1] << 26) + z2[0];
+	z_51[1] = (z2[3] << 26) + z2[2];
+	z_51[2] = (z2[5] << 26) + z2[4];
+	z_51[3] = (z2[7] << 26) + z2[6];
+	z_51[4] = (z2[9] << 26) + z2[8];
+	x_51[0] = (x2[1] << 26) + x2[0];
+	x_51[1] = (x2[3] << 26) + x2[2];
+	x_51[2] = (x2[5] << 26) + x2[4];
+	x_51[3] = (x2[7] << 26) + x2[6];
+	x_51[4] = (x2[9] << 26) + x2[8];
+#undef x1
+#undef x2
+#undef z2
+	curve25519_sandy2x_fe51_invert(&z_51, &z_51);
+	curve25519_sandy2x_fe51_mul(&x_51, &x_51, &z_51);
+	curve25519_sandy2x_fe51_pack(mypublic, &x_51);
+}
+
+static void curve25519_sandy2x_base(u8 pub[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE])
+{
+	u8 e[32];
+	fe var[3];
+	fe51 x_51, z_51;
+	memcpy(e, secret, 32);
+	normalize_secret(e);
+	curve25519_sandy2x_ladder_base(var, e);
+#define x2 var[0]
+#define z2 var[1]
+	z_51[0] = (z2[1] << 26) + z2[0];
+	z_51[1] = (z2[3] << 26) + z2[2];
+	z_51[2] = (z2[5] << 26) + z2[4];
+	z_51[3] = (z2[7] << 26) + z2[6];
+	z_51[4] = (z2[9] << 26) + z2[8];
+	x_51[0] = (x2[1] << 26) + x2[0];
+	x_51[1] = (x2[3] << 26) + x2[2];
+	x_51[2] = (x2[5] << 26) + x2[4];
+	x_51[3] = (x2[7] << 26) + x2[6];
+	x_51[4] = (x2[9] << 26) + x2[8];
+#undef x2
+#undef z2
+	curve25519_sandy2x_fe51_invert(&z_51, &z_51);
+	curve25519_sandy2x_fe51_mul(&x_51, &x_51, &z_51);
+	curve25519_sandy2x_fe51_pack(pub, &x_51);
+}
+#else
+void curve25519_fpu_init(void) { }
+#endif
+
 #ifdef __SIZEOF_INT128__
 typedef u64 limb;
 typedef limb felem[5];
@@ -395,25 +475,42 @@ static void crecip(felem out, const felem z)
 
 void curve25519(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE], const u8 basepoint[CURVE25519_POINT_SIZE])
 {
-	limb bp[5], x[5], z[5], zmone[5];
-	u8 e[32];
+	if (curve25519_use_avx && irq_fpu_usable()) {
+		kernel_fpu_begin();
+		curve25519_sandy2x(mypublic, secret, basepoint);
+		kernel_fpu_end();
+	} else {
+		limb bp[5], x[5], z[5], zmone[5];
+		u8 e[32];
 
-	memcpy(e, secret, 32);
-	normalize_secret(e);
+		memcpy(e, secret, 32);
+		normalize_secret(e);
 
-	fexpand(bp, basepoint);
-	cmult(x, z, e, bp);
-	crecip(zmone, z);
-	fmul(z, x, zmone);
-	fcontract(mypublic, z);
+		fexpand(bp, basepoint);
+		cmult(x, z, e, bp);
+		crecip(zmone, z);
+		fmul(z, x, zmone);
+		fcontract(mypublic, z);
 
-	memzero_explicit(e, sizeof(e));
-	memzero_explicit(bp, sizeof(bp));
-	memzero_explicit(x, sizeof(x));
-	memzero_explicit(z, sizeof(z));
-	memzero_explicit(zmone, sizeof(zmone));
+		memzero_explicit(e, sizeof(e));
+		memzero_explicit(bp, sizeof(bp));
+		memzero_explicit(x, sizeof(x));
+		memzero_explicit(z, sizeof(z));
+		memzero_explicit(zmone, sizeof(zmone));
+	}
 }
 
+void curve25519_generate_public(u8 pub[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE])
+{
+	if (curve25519_use_avx && irq_fpu_usable()) {
+		kernel_fpu_begin();
+		curve25519_sandy2x_base(pub, secret);
+		kernel_fpu_end();
+	} else {
+		static const u8 basepoint[CURVE25519_POINT_SIZE] = { 9 };
+		curve25519(pub, secret, basepoint);
+	}
+}
 #else
 typedef s64 limb;
 
@@ -1223,18 +1320,18 @@ void curve25519(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_P
 	memzero_explicit(z, sizeof(z));
 	memzero_explicit(zmone, sizeof(zmone));
 }
+
+void curve25519_generate_public(u8 pub[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE])
+{
+	static const u8 basepoint[CURVE25519_POINT_SIZE] = { 9 };
+	curve25519(pub, secret, basepoint);
+}
 #endif
 
 void curve25519_generate_secret(u8 secret[CURVE25519_POINT_SIZE])
 {
 	get_random_bytes(secret, CURVE25519_POINT_SIZE);
 	normalize_secret(secret);
-}
-
-void curve25519_generate_public(u8 pub[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE])
-{
-	static const u8 basepoint[CURVE25519_POINT_SIZE] = { 9 };
-	curve25519(pub, secret, basepoint);
 }
 
 #include "../selftest/curve25519.h"

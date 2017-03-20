@@ -87,7 +87,7 @@ struct udp_port_cfg_new {
 	__be16 peer_udp_port;
 	unsigned int use_udp_checksums:1, use_udp6_tx_checksums:1, use_udp6_rx_checksums:1, ipv6_v6only:1;
 };
-__attribute__((unused)) static inline int udp_sock_create_new(struct net *net, struct udp_port_cfg_new *cfg, struct socket **sockp)
+static inline int __maybe_unused udp_sock_create_new(struct net *net, struct udp_port_cfg_new *cfg, struct socket **sockp)
 {
 	struct udp_port_cfg old_cfg = {
 		.family = cfg->family,
@@ -158,6 +158,35 @@ __attribute__((unused)) static inline int udp_sock_create_new(struct net *net, s
 static inline bool ipv6_mod_enabled(void)
 {
 	return ipv6_stub->udpv6_encap_enable != NULL;
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0)
+#include <linux/skbuff.h>
+static inline void skb_reset_tc(struct sk_buff *skb)
+{
+#ifdef CONFIG_NET_CLS_ACT
+	skb->tc_verd = 0;
+#endif
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0)
+#include <linux/siphash.h>
+static inline u32 get_random_u32(void)
+{
+	static siphash_key_t key;
+	static u32 counter = 0;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+	static bool has_seeded = false;
+	if (unlikely(!has_seeded)) {
+		get_random_bytes(&key, sizeof(key));
+		has_seeded = true;
+	}
+#else
+	get_random_once(&key, sizeof(key));
+#endif
+	return siphash_2u32(counter++, get_random_int(), &key);
 }
 #endif
 
