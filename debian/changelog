@@ -1,3 +1,9 @@
+wireguard (0.0.20170320.1-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 20 Mar 2017 11:43:36 -0400
+
 wireguard (0.0.20170223-1) unstable; urgency=medium
 
   * New upstream release
