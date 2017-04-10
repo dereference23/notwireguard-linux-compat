@@ -1,7 +1,7 @@
 PWD := $(shell pwd)
 
 # Set these from the environment to override
-KERNEL_VERSION ?= 4.8.12
+KERNEL_VERSION ?= 4.9.20
 BUILD_PATH ?= $(PWD)/../../../qemu-build
 DISTFILES_PATH ?= $(PWD)/distfiles
 DEBUG_KERNEL ?= no
@@ -14,7 +14,7 @@ DOWNLOAD := wget -O
 MIRROR := https://download.wireguard.io/qemu-test/distfiles/
 
 CHOST := x86_64-pc-linux-gnu
-WIREGUARD_SOURCES := $(wildcard ../../*.c ../../*.h ../../selftest/*.h ../../crypto/*.c ../../crypto/*.h ../../crypto/*.S)
+WIREGUARD_SOURCES := $(wildcard ../../*.c ../../*.h ../../selftest/*.h ../../crypto/*.c ../../crypto/*.h ../../crypto/*.S ../../compat/*.h)
 TOOLS_SOURCES := $(wildcard ../../tools/*.c ../../tools*.h ../../uapi.h)
 
 default: qemu
@@ -113,14 +113,14 @@ $(KERNEL_PATH)/.installed: $(KERNEL_TAR)
 $(KERNEL_PATH)/.config: kernel.config | $(KERNEL_PATH)/.installed
 	cp kernel.config $(KERNEL_PATH)/minimal.config
 	printf 'CONFIG_NR_CPUS=$(NR_CPUS)\nCONFIG_INITRAMFS_SOURCE="$(BUILD_PATH)/init-cpio-spec.txt"\n' >> $(KERNEL_PATH)/minimal.config
-	$(MAKE) -C $(KERNEL_PATH) ARCH=x86_64 tinyconfig
+	$(MAKE) -C $(KERNEL_PATH) ARCH=x86_64 allnoconfig
 	cd $(KERNEL_PATH) && scripts/kconfig/merge_config.sh -n .config minimal.config
 	-[ "$(DEBUG_KERNEL)" = "yes" ] && ( cd $(KERNEL_PATH) && scripts/kconfig/merge_config.sh -n .config $(PWD)/debug.config )
 
 $(KERNEL_BZIMAGE): $(KERNEL_PATH)/.installed $(KERNEL_PATH)/.config $(BUILD_PATH)/init-cpio-spec.txt $(MUSL_PATH)/lib/libc.so $(IPERF_PATH)/src/iperf3 $(BUILD_PATH)/tools/wg $(IPUTILS_PATH)/ping $(BASH_PATH)/bash $(IPROUTE2_PATH)/ip/ip $(IPTABLES_PATH)/iptables/xtables-multi $(NMAP_PATH)/ncat/ncat $(BUILD_PATH)/init ../netns.sh $(WIREGUARD_SOURCES) $(TOOLS_SOURCES)
 	LOCALVERSION="" $(MAKE) -C $(KERNEL_PATH)
 
-$(BUILD_PATH)/include/linux/.installed: | $(KERNEL_PATH)/.installed
+$(BUILD_PATH)/include/linux/.installed: | $(KERNEL_PATH)/.installed $(KERNEL_PATH)/.config
 	LOCALVERSION="" $(MAKE) -C $(KERNEL_PATH) INSTALL_HDR_PATH=$(BUILD_PATH) headers_install
 	touch $@
 

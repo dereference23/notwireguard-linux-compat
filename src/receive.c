@@ -179,7 +179,7 @@ void packet_process_queued_handshake_packets(struct work_struct *work)
 		receive_handshake_packet(wg, skb);
 		dev_kfree_skb(skb);
 		if (++num_processed == MAX_BURST_INCOMING_HANDSHAKES) {
-			queue_work(wg->workqueue, &wg->incoming_handshakes_work);
+			queue_work(wg->handshake_wq, &wg->incoming_handshakes_work);
 			return;
 		}
 	}
@@ -192,12 +192,12 @@ static void keep_key_fresh(struct wireguard_peer *peer)
 	if (peer->sent_lastminute_handshake)
 		return;
 
-	rcu_read_lock();
-	keypair = rcu_dereference(peer->keypairs.current_keypair);
+	rcu_read_lock_bh();
+	keypair = rcu_dereference_bh(peer->keypairs.current_keypair);
 	if (likely(keypair && keypair->sending.is_valid) && keypair->i_am_the_initiator &&
 	    unlikely(time_is_before_eq_jiffies64(keypair->sending.birthdate + REJECT_AFTER_TIME - KEEPALIVE_TIMEOUT - REKEY_TIMEOUT)))
 		send = true;
-	rcu_read_unlock();
+	rcu_read_unlock_bh();
 
 	if (send) {
 		peer->sent_lastminute_handshake = true;
@@ -205,16 +205,11 @@ static void keep_key_fresh(struct wireguard_peer *peer)
 	}
 }
 
-static void receive_data_packet(struct sk_buff *skb, struct wireguard_peer *peer, struct endpoint *endpoint, bool used_new_key, int err)
+void packet_consume_data_done(struct sk_buff *skb, struct wireguard_peer *peer, struct endpoint *endpoint, bool used_new_key)
 {
 	struct net_device *dev;
 	struct wireguard_peer *routed_peer;
 	struct wireguard_device *wg;
-
-	if (unlikely(err < 0 || !peer || !endpoint)) {
-		dev_kfree_skb(skb);
-		return;
-	}
 
 	socket_set_peer_endpoint(peer, endpoint);
 
@@ -301,11 +296,11 @@ void packet_receive(struct wireguard_device *wg, struct sk_buff *skb)
 		}
 		skb_queue_tail(&wg->incoming_handshakes, skb);
 		/* Queues up a call to packet_process_queued_handshake_packets(skb): */
-		queue_work(wg->workqueue, &wg->incoming_handshakes_work);
+		queue_work(wg->handshake_wq, &wg->incoming_handshakes_work);
 		break;
 	case MESSAGE_DATA:
 		PACKET_CB(skb)->ds = ip_tunnel_get_dsfield(ip_hdr(skb), skb);
-		packet_consume_data(skb, wg, receive_data_packet);
+		packet_consume_data(skb, wg);
 		break;
 	default:
 		net_dbg_skb_ratelimited("Invalid packet from %pISpfsc\n", skb);

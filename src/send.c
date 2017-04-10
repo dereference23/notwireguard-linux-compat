@@ -56,7 +56,7 @@ void packet_queue_handshake_initiation(struct wireguard_peer *peer)
 		return;
 
 	/* Queues up calling packet_send_queued_handshakes(peer), where we do a peer_put(peer) after: */
-	if (!queue_work(peer->device->workqueue, &peer->transmit_handshake_work))
+	if (!queue_work(peer->device->handshake_wq, &peer->transmit_handshake_work))
 		peer_put(peer); /* If the work was already queued, we want to drop the extra reference */
 }
 
@@ -91,13 +91,13 @@ static inline void keep_key_fresh(struct wireguard_peer *peer)
 	struct noise_keypair *keypair;
 	bool send = false;
 
-	rcu_read_lock();
-	keypair = rcu_dereference(peer->keypairs.current_keypair);
+	rcu_read_lock_bh();
+	keypair = rcu_dereference_bh(peer->keypairs.current_keypair);
 	if (likely(keypair && keypair->sending.is_valid) &&
 	   (unlikely(atomic64_read(&keypair->sending.counter.counter) > REKEY_AFTER_MESSAGES) ||
 	   (keypair->i_am_the_initiator && unlikely(time_is_before_eq_jiffies64(keypair->sending.birthdate + REKEY_AFTER_TIME)))))
 		send = true;
-	rcu_read_unlock();
+	rcu_read_unlock_bh();
 
 	if (send)
 		packet_queue_handshake_initiation(peer);
@@ -118,7 +118,7 @@ void packet_send_keepalive(struct wireguard_peer *peer)
 	packet_send_queue(peer);
 }
 
-static void message_create_data_done(struct sk_buff_head *queue, struct wireguard_peer *peer)
+void packet_create_data_done(struct sk_buff_head *queue, struct wireguard_peer *peer)
 {
 	struct sk_buff *skb, *tmp;
 	bool is_keepalive, data_sent = false;
@@ -144,21 +144,20 @@ static void message_create_data_done(struct sk_buff_head *queue, struct wireguar
 void packet_send_queue(struct wireguard_peer *peer)
 {
 	struct sk_buff_head queue;
-	unsigned long flags;
 
 	peer->need_resend_queue = false;
 
 	/* Steal the current queue into our local one. */
 	skb_queue_head_init(&queue);
-	spin_lock_irqsave(&peer->tx_packet_queue.lock, flags);
+	spin_lock_bh(&peer->tx_packet_queue.lock);
 	skb_queue_splice_init(&peer->tx_packet_queue, &queue);
-	spin_unlock_irqrestore(&peer->tx_packet_queue.lock, flags);
+	spin_unlock_bh(&peer->tx_packet_queue.lock);
 
 	if (unlikely(!skb_queue_len(&queue)))
 		return;
 
 	/* We submit it for encryption and sending. */
-	switch (packet_create_data(&queue, peer, message_create_data_done)) {
+	switch (packet_create_data(&queue, peer)) {
 	case 0:
 		break;
 	case -EBUSY:
@@ -172,17 +171,17 @@ void packet_send_queue(struct wireguard_peer *peer)
 		/* We stick the remaining skbs from local_queue at the top of the peer's
 		 * queue again, setting the top of local_queue to be the skb that begins
 		 * the requeueing. */
-		spin_lock_irqsave(&peer->tx_packet_queue.lock, flags);
+		spin_lock_bh(&peer->tx_packet_queue.lock);
 		skb_queue_splice(&queue, &peer->tx_packet_queue);
-		spin_unlock_irqrestore(&peer->tx_packet_queue.lock, flags);
+		spin_unlock_bh(&peer->tx_packet_queue.lock);
 		break;
 	case -ENOKEY:
 		/* ENOKEY means that we don't have a valid session for the peer, which
 		 * means we should initiate a session, but after requeuing like above. */
 
-		spin_lock_irqsave(&peer->tx_packet_queue.lock, flags);
+		spin_lock_bh(&peer->tx_packet_queue.lock);
 		skb_queue_splice(&queue, &peer->tx_packet_queue);
-		spin_unlock_irqrestore(&peer->tx_packet_queue.lock, flags);
+		spin_unlock_bh(&peer->tx_packet_queue.lock);
 
 		packet_queue_handshake_initiation(peer);
 		break;

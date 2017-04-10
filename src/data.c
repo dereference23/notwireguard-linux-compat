@@ -18,7 +18,6 @@
 struct encryption_ctx {
 	struct padata_priv padata;
 	struct sk_buff_head queue;
-	packet_create_data_callback_t callback;
 	struct wireguard_peer *peer;
 	struct noise_keypair *keypair;
 };
@@ -27,9 +26,7 @@ struct decryption_ctx {
 	struct padata_priv padata;
 	struct endpoint endpoint;
 	struct sk_buff *skb;
-	packet_consume_data_callback_t callback;
 	struct noise_keypair *keypair;
-	int ret;
 };
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
@@ -124,7 +121,7 @@ static inline void skb_reset(struct sk_buff *skb)
 
 static inline bool skb_encrypt(struct sk_buff *skb, struct noise_keypair *keypair, bool have_simd)
 {
-	struct scatterlist *sg;
+	struct scatterlist sg[MAX_SKB_FRAGS * 2 + 1];
 	struct message_data *header;
 	unsigned int padding_len, plaintext_len, trailer_len;
 	int num_frags;
@@ -140,7 +137,7 @@ static inline bool skb_encrypt(struct sk_buff *skb, struct noise_keypair *keypai
 
 	/* Expand data section to have room for padding and auth tag */
 	num_frags = skb_cow_data(skb, trailer_len, &trailer);
-	if (unlikely(num_frags < 0 || num_frags > 128))
+	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
 		return false;
 
 	/* Set the padding to zeros, and make sure it and the auth tag are part of the skb */
@@ -162,17 +159,15 @@ static inline bool skb_encrypt(struct sk_buff *skb, struct noise_keypair *keypai
 	pskb_put(skb, trailer, trailer_len);
 
 	/* Now we can encrypt the scattergather segments */
-	sg = __builtin_alloca(num_frags * sizeof(struct scatterlist)); /* bounded to 128 */
 	sg_init_table(sg, num_frags);
-	skb_to_sgvec(skb, sg, sizeof(struct message_data), noise_encrypted_len(plaintext_len));
-	chacha20poly1305_encrypt_sg(sg, sg, plaintext_len, NULL, 0, PACKET_CB(skb)->nonce, keypair->sending.key, have_simd);
-
-	return true;
+	if (skb_to_sgvec(skb, sg, sizeof(struct message_data), noise_encrypted_len(plaintext_len)) <= 0)
+		return false;
+	return chacha20poly1305_encrypt_sg(sg, sg, plaintext_len, NULL, 0, PACKET_CB(skb)->nonce, keypair->sending.key, have_simd);
 }
 
 static inline bool skb_decrypt(struct sk_buff *skb, struct noise_symmetric_key *key)
 {
-	struct scatterlist *sg;
+	struct scatterlist sg[MAX_SKB_FRAGS * 2 + 1];
 	struct sk_buff *trailer;
 	int num_frags;
 
@@ -187,12 +182,12 @@ static inline bool skb_decrypt(struct sk_buff *skb, struct noise_symmetric_key *
 	PACKET_CB(skb)->nonce = le64_to_cpu(((struct message_data *)skb->data)->counter);
 	skb_pull(skb, sizeof(struct message_data));
 	num_frags = skb_cow_data(skb, 0, &trailer);
-	if (unlikely(num_frags < 0 || num_frags > 128))
+	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
 		return false;
-	sg = __builtin_alloca(num_frags * sizeof(struct scatterlist)); /* bounded to 128 */
 
 	sg_init_table(sg, num_frags);
-	skb_to_sgvec(skb, sg, 0, skb->len);
+	if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
+		return false;
 
 	if (!chacha20poly1305_decrypt_sg(sg, sg, skb->len, NULL, 0, PACKET_CB(skb)->nonce, key->key))
 		return false;
@@ -225,7 +220,7 @@ static inline void queue_encrypt_reset(struct sk_buff_head *queue, struct noise_
 	bool have_simd = chacha20poly1305_init_simd();
 	skb_queue_walk_safe(queue, skb, tmp) {
 		if (unlikely(!skb_encrypt(skb, keypair, have_simd))) {
-			skb_unlink(skb, queue);
+			__skb_unlink(skb, queue);
 			kfree_skb(skb);
 			continue;
 		}
@@ -236,30 +231,20 @@ static inline void queue_encrypt_reset(struct sk_buff_head *queue, struct noise_
 }
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
-static void do_encryption(struct padata_priv *padata)
+static void begin_parallel_encryption(struct padata_priv *padata)
 {
 	struct encryption_ctx *ctx = container_of(padata, struct encryption_ctx, padata);
-
 	queue_encrypt_reset(&ctx->queue, ctx->keypair);
 	padata_do_serial(padata);
 }
 
-static void finish_encryption(struct padata_priv *padata)
+static void finish_parallel_encryption(struct padata_priv *padata)
 {
 	struct encryption_ctx *ctx = container_of(padata, struct encryption_ctx, padata);
-
-	ctx->callback(&ctx->queue, ctx->peer);
+	packet_create_data_done(&ctx->queue, ctx->peer);
 	atomic_dec(&ctx->peer->parallel_encryption_inflight);
 	peer_put(ctx->peer);
 	kmem_cache_free(encryption_ctx_cache, ctx);
-}
-
-static inline int start_encryption(struct padata_instance *padata, struct padata_priv *priv, int cb_cpu)
-{
-	memset(priv, 0, sizeof(struct padata_priv));
-	priv->parallel = do_encryption;
-	priv->serial = finish_encryption;
-	return padata_do_parallel(padata, priv, cb_cpu);
 }
 
 static inline unsigned int choose_cpu(__le32 key)
@@ -276,17 +261,17 @@ static inline unsigned int choose_cpu(__le32 key)
 }
 #endif
 
-int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer, packet_create_data_callback_t callback)
+int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer)
 {
 	int ret = -ENOKEY;
 	struct noise_keypair *keypair;
 	struct sk_buff *skb;
 
-	rcu_read_lock();
-	keypair = noise_keypair_get(rcu_dereference(peer->keypairs.current_keypair));
+	rcu_read_lock_bh();
+	keypair = noise_keypair_get(rcu_dereference_bh(peer->keypairs.current_keypair));
 	if (unlikely(!keypair))
 		goto err_rcu;
-	rcu_read_unlock();
+	rcu_read_unlock_bh();
 
 	skb_queue_walk(queue, skb) {
 		if (unlikely(!get_encryption_nonce(&PACKET_CB(skb)->nonce, &keypair->sending)))
@@ -303,21 +288,21 @@ int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer, 
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
 	if ((skb_queue_len(queue) > 1 || queue->next->len > 256 || atomic_read(&peer->parallel_encryption_inflight) > 0) && cpumask_weight(cpu_online_mask) > 1) {
-		unsigned int cpu = choose_cpu(keypair->remote_index);
 		struct encryption_ctx *ctx = kmem_cache_alloc(encryption_ctx_cache, GFP_ATOMIC);
 		if (!ctx)
 			goto serial_encrypt;
 		skb_queue_head_init(&ctx->queue);
 		skb_queue_splice_init(queue, &ctx->queue);
-		ctx->callback = callback;
+		memset(&ctx->padata, 0, sizeof(ctx->padata));
+		ctx->padata.parallel = begin_parallel_encryption;
+		ctx->padata.serial = finish_parallel_encryption;
 		ctx->keypair = keypair;
 		ctx->peer = peer_rcu_get(peer);
 		ret = -EBUSY;
 		if (unlikely(!ctx->peer))
 			goto err_parallel;
 		atomic_inc(&peer->parallel_encryption_inflight);
-		ret = start_encryption(peer->device->parallel_send, &ctx->padata, cpu);
-		if (unlikely(ret < 0)) {
+		if (unlikely(padata_do_parallel(peer->device->encrypt_pd, &ctx->padata, choose_cpu(keypair->remote_index)))) {
 			atomic_dec(&peer->parallel_encryption_inflight);
 			peer_put(ctx->peer);
 err_parallel:
@@ -330,7 +315,7 @@ serial_encrypt:
 #endif
 	{
 		queue_encrypt_reset(queue, keypair);
-		callback(queue, peer);
+		packet_create_data_done(queue, peer);
 	}
 	return 0;
 
@@ -338,110 +323,79 @@ err:
 	noise_keypair_put(keypair);
 	return ret;
 err_rcu:
-	rcu_read_unlock();
+	rcu_read_unlock_bh();
 	return ret;
 }
 
 static void begin_decrypt_packet(struct decryption_ctx *ctx)
 {
-	ctx->ret = socket_endpoint_from_skb(&ctx->endpoint, ctx->skb);
-	if (unlikely(ctx->ret < 0))
-		goto err;
-
-	ctx->ret = -ENOKEY;
-	if (unlikely(!skb_decrypt(ctx->skb, &ctx->keypair->receiving)))
-		goto err;
-
-	ctx->ret = 0;
-	return;
-
-err:
-	peer_put(ctx->keypair->entry.peer);
+	if (unlikely(socket_endpoint_from_skb(&ctx->endpoint, ctx->skb) < 0 || !skb_decrypt(ctx->skb, &ctx->keypair->receiving))) {
+		peer_put(ctx->keypair->entry.peer);
+		noise_keypair_put(ctx->keypair);
+		dev_kfree_skb(ctx->skb);
+		ctx->skb = NULL;
+	}
 }
 
 static void finish_decrypt_packet(struct decryption_ctx *ctx)
 {
-	struct noise_keypairs *keypairs;
-	bool used_new_key = false;
-	u64 nonce = PACKET_CB(ctx->skb)->nonce;
-	int ret = ctx->ret;
-	if (ret)
-		goto err;
+	bool used_new_key;
 
-	keypairs = &ctx->keypair->entry.peer->keypairs;
-	ret = counter_validate(&ctx->keypair->receiving.counter, nonce) ? 0 : -ERANGE;
+	if (!ctx->skb)
+		return;
 
-	if (likely(!ret))
-		used_new_key = noise_received_with_keypair(&ctx->keypair->entry.peer->keypairs, ctx->keypair);
-	else {
-		net_dbg_ratelimited("Packet has invalid nonce %Lu (max %Lu)\n", nonce, ctx->keypair->receiving.counter.receive.counter);
+	if (unlikely(!counter_validate(&ctx->keypair->receiving.counter, PACKET_CB(ctx->skb)->nonce))) {
+		net_dbg_ratelimited("Packet has invalid nonce %Lu (max %Lu)\n", PACKET_CB(ctx->skb)->nonce, ctx->keypair->receiving.counter.receive.counter);
 		peer_put(ctx->keypair->entry.peer);
-		goto err;
+		noise_keypair_put(ctx->keypair);
+		dev_kfree_skb(ctx->skb);
+		return;
 	}
 
-	noise_keypair_put(ctx->keypair);
-
+	used_new_key = noise_received_with_keypair(&ctx->keypair->entry.peer->keypairs, ctx->keypair);
 	skb_reset(ctx->skb);
-	ctx->callback(ctx->skb, ctx->keypair->entry.peer, &ctx->endpoint, used_new_key, 0);
-	return;
-
-err:
+	packet_consume_data_done(ctx->skb, ctx->keypair->entry.peer, &ctx->endpoint, used_new_key);
 	noise_keypair_put(ctx->keypair);
-	ctx->callback(ctx->skb, NULL, NULL, false, ret);
 }
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
-static void do_decryption(struct padata_priv *padata)
+static void begin_parallel_decryption(struct padata_priv *padata)
 {
 	struct decryption_ctx *ctx = container_of(padata, struct decryption_ctx, padata);
 	begin_decrypt_packet(ctx);
 	padata_do_serial(padata);
 }
 
-static void finish_decryption(struct padata_priv *padata)
+static void finish_parallel_decryption(struct padata_priv *padata)
 {
 	struct decryption_ctx *ctx = container_of(padata, struct decryption_ctx, padata);
 	finish_decrypt_packet(ctx);
 	kmem_cache_free(decryption_ctx_cache, ctx);
 }
-
-static inline int start_decryption(struct padata_instance *padata, struct padata_priv *priv, int cb_cpu)
-{
-	memset(priv, 0, sizeof(struct padata_priv));
-	priv->parallel = do_decryption;
-	priv->serial = finish_decryption;
-	return padata_do_parallel(padata, priv, cb_cpu);
-}
 #endif
 
-void packet_consume_data(struct sk_buff *skb, struct wireguard_device *wg, packet_consume_data_callback_t callback)
+void packet_consume_data(struct sk_buff *skb, struct wireguard_device *wg)
 {
-	int ret;
 	struct noise_keypair *keypair;
 	__le32 idx = ((struct message_data *)skb->data)->key_idx;
 
-	ret = -EINVAL;
-	rcu_read_lock();
+	rcu_read_lock_bh();
 	keypair = noise_keypair_get((struct noise_keypair *)index_hashtable_lookup(&wg->index_hashtable, INDEX_HASHTABLE_KEYPAIR, idx));
-	rcu_read_unlock();
+	rcu_read_unlock_bh();
 	if (unlikely(!keypair))
 		goto err;
 
 #ifdef CONFIG_WIREGUARD_PARALLEL
 	if (cpumask_weight(cpu_online_mask) > 1) {
-		unsigned int cpu = choose_cpu(idx);
-		struct decryption_ctx *ctx;
-
-		ret = -ENOMEM;
-		ctx = kmem_cache_alloc(decryption_ctx_cache, GFP_ATOMIC);
+		struct decryption_ctx *ctx = kmem_cache_alloc(decryption_ctx_cache, GFP_ATOMIC);
 		if (unlikely(!ctx))
 			goto err_peer;
-
 		ctx->skb = skb;
 		ctx->keypair = keypair;
-		ctx->callback = callback;
-		ret = start_decryption(wg->parallel_receive, &ctx->padata, cpu);
-		if (unlikely(ret)) {
+		memset(&ctx->padata, 0, sizeof(ctx->padata));
+		ctx->padata.parallel = begin_parallel_decryption;
+		ctx->padata.serial = finish_parallel_decryption;
+		if (unlikely(padata_do_parallel(wg->decrypt_pd, &ctx->padata, choose_cpu(idx)))) {
 			kmem_cache_free(decryption_ctx_cache, ctx);
 			goto err_peer;
 		}
@@ -450,8 +404,7 @@ void packet_consume_data(struct sk_buff *skb, struct wireguard_device *wg, packe
 	{
 		struct decryption_ctx ctx = {
 			.skb = skb,
-			.keypair = keypair,
-			.callback = callback
+			.keypair = keypair
 		};
 		begin_decrypt_packet(&ctx);
 		finish_decrypt_packet(&ctx);
@@ -464,5 +417,5 @@ err_peer:
 	noise_keypair_put(keypair);
 #endif
 err:
-	callback(skb, NULL, NULL, false, ret);
+	dev_kfree_skb(skb);
 }
