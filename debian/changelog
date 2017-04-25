@@ -1,3 +1,9 @@
+wireguard (0.0.20170421-2) unstable; urgency=medium
+
+  * update/correct debian/copyright
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 25 Apr 2017 12:56:14 -0400
+
 wireguard (0.0.20170421-1) unstable; urgency=medium
 
   * New upstream release
