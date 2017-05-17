@@ -8,11 +8,13 @@ Copyright: 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
 
 Files: src/crypto/chacha20-avx2-x86_64.S src/crypto/chacha20-ssse3-x86_64.S src/crypto/chacha20poly1305.c src/crypto/poly1305-avx2-x86_64.S src/crypto/poly1305-sse2-x86_64.S
-Copyright: 2015 Martin Willi
+Copyright: 2015 Martin Willi,
+ 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2+
 
 Files: src/crypto/curve25519.c src/tools/curve25519.c
-Copyright: 2008 Google Inc.
+Copyright: 2008 Google Inc.,
+ 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>
 License: BSD-3-clause
 
 Files: debian/*
