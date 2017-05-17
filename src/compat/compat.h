@@ -22,6 +22,10 @@
 #error "WireGuard requires CONFIG_IP6_NF_IPTABLES when using CONFIG_IPV6."
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0) && defined(CONFIG_X86_64)
+#define CONFIG_AS_SSSE3
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
 #define headers_start data
 #define headers_end data
@@ -164,6 +168,10 @@ static inline void *our_pskb_put(struct sk_buff *skb, struct sk_buff *tail, int 
 #include <net/xfrm.h>
 static inline void skb_scrub_packet(struct sk_buff *skb, bool xnet)
 {
+#ifdef CONFIG_CAVIUM_OCTEON_IPFWD_OFFLOAD
+	memset(&skb->cvm_info, 0, sizeof(skb->cvm_info));
+	skb->cvm_reserved = 0;
+#endif
 	skb->tstamp.tv64 = 0;
 	skb->pkt_type = PACKET_HOST;
 	skb->skb_iif = 0;
@@ -183,20 +191,6 @@ static inline void skb_scrub_packet(struct sk_buff *skb, bool xnet)
 static inline u32 prandom_u32_max(u32 ep_ro)
 {
 	return (u32)(((u64) prandom_u32() * ep_ro) >> 32);
-}
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 59)
-static inline int crypto_memneq(const void *a, const void *b, size_t size)
-{
-	unsigned long neq = 0;
-	while (size > 0) {
-		neq |= *(u8 *)a ^ *(u8 *)b;
-		a += 1;
-		b += 1;
-		size -= 1;
-	}
-	return neq != 0UL ? 1 : 0;
 }
 #endif
 

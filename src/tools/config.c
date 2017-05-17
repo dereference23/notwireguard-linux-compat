@@ -8,13 +8,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <errno.h>
 
 #include "config.h"
 #include "ipc.h"
-#include "base64.h"
+#include "encoding.h"
 
 #define COMMENT_CHAR '#'
 
@@ -170,14 +171,12 @@ static inline bool parse_endpoint(struct sockaddr *endpoint, const char *value)
 			fprintf(stderr, "Unable to find matching brace of endpoint: `%s`\n", value);
 			return false;
 		}
-		*end = '\0';
-		++end;
-		if (*end != ':' || !*(end + 1)) {
+		*end++ = '\0';
+		if (*end++ != ':' || !*end) {
 			free(mutable);
 			fprintf(stderr, "Unable to find port of endpoint: `%s`\n", value);
 			return false;
 		}
-		++end;
 	} else {
 		begin = mutable;
 		end = strrchr(mutable, ':');
@@ -186,10 +185,17 @@ static inline bool parse_endpoint(struct sockaddr *endpoint, const char *value)
 			fprintf(stderr, "Unable to find port of endpoint: `%s`\n", value);
 			return false;
 		}
-		*end = '\0';
-		++end;
+		*end++ = '\0';
 	}
-	ret = getaddrinfo(begin, end, &hints, &resolved);
+
+	for (unsigned int timeout = 1000000; timeout < 90000000; timeout = timeout * 3 / 2) {
+		ret = getaddrinfo(begin, end, &hints, &resolved);
+		if (ret != EAI_AGAIN)
+			break;
+		fprintf(stderr, "%s: `%s`. Trying again in %.2f seconds...\n", gai_strerror(ret), value, timeout / 1000000.0);
+		usleep(timeout);
+	}
+
 	if (ret != 0) {
 		free(mutable);
 		fprintf(stderr, "%s: `%s`\n", gai_strerror(ret), value);
@@ -314,10 +320,6 @@ static bool process_line(struct config_ctx *ctx, const char *line)
 			ret = parse_key(ctx->buf.dev->private_key, value);
 			if (!ret)
 				memset(ctx->buf.dev->private_key, 0, WG_KEY_LEN);
-		} else if (key_match("PresharedKey")) {
-			ret = parse_key(ctx->buf.dev->preshared_key, value);
-			if (!ret)
-				memset(ctx->buf.dev->preshared_key, 0, WG_KEY_LEN);
 		} else
 			goto error;
 	} else if (ctx->is_peer_section) {
@@ -329,7 +331,11 @@ static bool process_line(struct config_ctx *ctx, const char *line)
 			ret = parse_ipmasks(&ctx->buf, ctx->peer_offset, value);
 		else if (key_match("PersistentKeepalive"))
 			ret = parse_persistent_keepalive(&peer_from_offset(ctx->buf.dev, ctx->peer_offset)->persistent_keepalive_interval, value);
-		else
+		else if (key_match("PresharedKey")) {
+			ret = parse_key(peer_from_offset(ctx->buf.dev, ctx->peer_offset)->preshared_key, value);
+			if (!ret)
+				memset(peer_from_offset(ctx->buf.dev, ctx->peer_offset)->preshared_key, 0, WG_KEY_LEN);
+		} else
 			goto error;
 	} else
 		goto error;
@@ -399,8 +405,6 @@ bool config_read_finish(struct config_ctx *ctx)
 		fprintf(stderr, "No private key configured\n");
 		goto err;
 	}
-	if (ctx->buf.dev->flags & WGDEVICE_REPLACE_PEERS && !key_is_valid(ctx->buf.dev->preshared_key))
-		ctx->buf.dev->flags |= WGDEVICE_REMOVE_PRESHARED_KEY;
 	if (ctx->buf.dev->flags & WGDEVICE_REPLACE_PEERS && !ctx->buf.dev->fwmark)
 		ctx->buf.dev->flags |= WGDEVICE_REMOVE_FWMARK;
 
@@ -417,32 +421,48 @@ err:
 	return false;
 }
 
-static int read_line(char **dst, const char *path)
+static int read_keyfile(char dst[WG_KEY_LEN_BASE64], const char *path)
 {
 	FILE *f;
-	size_t n = 0;
-
-	*dst = NULL;
+	int ret = -1, c;
 
 	f = fopen(path, "r");
 	if (!f) {
 		perror("fopen");
 		return -1;
 	}
-	if (getline(dst, &n, f) < 0 && errno) {
-		perror("getline");
-		fclose(f);
-		return -1;
+
+	if (fread(dst, WG_KEY_LEN_BASE64 - 1, 1, f) != 1) {
+		if (errno) {
+			perror("fread");
+			goto out;
+		}
+		/* If we're at the end and we didn't read anything, we're /dev/null. */
+		if (!ferror(f) && feof(f) && !ftell(f)) {
+			ret = 1;
+			goto out;
+		}
+
+		fprintf(stderr, "Invalid length key in key file\n");
+		goto out;
 	}
+	dst[WG_KEY_LEN_BASE64 - 1] = '\0';
+
+	while ((c = getc(f)) != EOF) {
+		if (!isspace(c)) {
+			fprintf(stderr, "Found trailing character in key file: `%c`\n", c);
+			goto out;
+		}
+	}
+	if (ferror(f) && errno) {
+		perror("getc");
+		goto out;
+	}
+	ret = 0;
+
+out:
 	fclose(f);
-	n = strlen(*dst);
-	if (!n)
-		return 1;
-	while (--n) {
-		if (isspace((*dst)[n]))
-			(*dst)[n] = '\0';
-	}
-	return 0;
+	return ret;
 }
 
 static char *strip_spaces(const char *in)
@@ -485,31 +505,13 @@ bool config_read_cmd(struct wgdevice **device, char *argv[], int argc)
 			argv += 2;
 			argc -= 2;
 		} else if (!strcmp(argv[0], "private-key") && argc >= 2 && !buf.dev->num_peers) {
-			char *line;
-			int ret = read_line(&line, argv[1]);
+			char key_line[WG_KEY_LEN_BASE64];
+			int ret = read_keyfile(key_line, argv[1]);
 			if (ret == 0) {
-				if (!parse_key(buf.dev->private_key, line)) {
-					free(line);
+				if (!parse_key(buf.dev->private_key, key_line))
 					goto error;
-				}
-				free(line);
 			} else if (ret == 1)
 				buf.dev->flags |= WGDEVICE_REMOVE_PRIVATE_KEY;
-			else
-				goto error;
-			argv += 2;
-			argc -= 2;
-		} else if (!strcmp(argv[0], "preshared-key") && argc >= 2 && !buf.dev->num_peers) {
-			char *line;
-			int ret = read_line(&line, argv[1]);
-			if (ret == 0) {
-				if (!parse_key(buf.dev->preshared_key, line)) {
-					free(line);
-					goto error;
-				}
-				free(line);
-			} else if (ret == 1)
-				buf.dev->flags |= WGDEVICE_REMOVE_PRESHARED_KEY;
 			else
 				goto error;
 			argv += 2;
@@ -548,6 +550,18 @@ bool config_read_cmd(struct wgdevice **device, char *argv[], int argc)
 			argc -= 2;
 		} else if (!strcmp(argv[0], "persistent-keepalive") && argc >= 2 && buf.dev->num_peers) {
 			if (!parse_persistent_keepalive(&peer_from_offset(buf.dev, peer_offset)->persistent_keepalive_interval, argv[1]))
+				goto error;
+			argv += 2;
+			argc -= 2;
+		} else if (!strcmp(argv[0], "preshared-key") && argc >= 2 && buf.dev->num_peers) {
+			char key_line[WG_KEY_LEN_BASE64];
+			int ret = read_keyfile(key_line, argv[1]);
+			if (ret == 0) {
+				if (!parse_key(peer_from_offset(buf.dev, peer_offset)->preshared_key, key_line))
+					goto error;
+			} else if (ret == 1)
+				buf.dev->flags |= WGPEER_REMOVE_PRESHARED_KEY;
+			else
 				goto error;
 			argv += 2;
 			argc -= 2;

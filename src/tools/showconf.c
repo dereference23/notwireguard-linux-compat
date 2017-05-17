@@ -10,7 +10,7 @@
 #include <netdb.h>
 
 #include "subcommands.h"
-#include "base64.h"
+#include "encoding.h"
 #include "ipc.h"
 #include "../uapi.h"
 
@@ -50,14 +50,14 @@ int showconf_main(int argc, char *argv[])
 		key_to_base64(base64, device->private_key);
 		printf("PrivateKey = %s\n", base64);
 	}
-	if (memcmp(device->preshared_key, zero, WG_KEY_LEN)) {
-		key_to_base64(base64, device->preshared_key);
-		printf("PresharedKey = %s\n", base64);
-	}
 	printf("\n");
 	for_each_wgpeer(device, peer, i) {
 		key_to_base64(base64, peer->public_key);
 		printf("[Peer]\nPublicKey = %s\n", base64);
+		if (memcmp(peer->preshared_key, zero, WG_KEY_LEN)) {
+			key_to_base64(base64, peer->preshared_key);
+			printf("PresharedKey = %s\n", base64);
+		}
 		if (peer->num_ipmasks)
 			printf("AllowedIPs = ");
 		for_each_wgipmask(peer, ipmask, j) {
@@ -79,16 +79,16 @@ int showconf_main(int argc, char *argv[])
 		if (peer->endpoint.addr.sa_family == AF_INET || peer->endpoint.addr.sa_family == AF_INET6) {
 			char host[4096 + 1];
 			char service[512 + 1];
-			static char buf[sizeof(host) + sizeof(service) + 4];
 			socklen_t addr_len = 0;
-			memset(buf, 0, sizeof(buf));
 			if (peer->endpoint.addr.sa_family == AF_INET)
 				addr_len = sizeof(struct sockaddr_in);
 			else if (peer->endpoint.addr.sa_family == AF_INET6)
 				addr_len = sizeof(struct sockaddr_in6);
 			if (!getnameinfo(&peer->endpoint.addr, addr_len, host, sizeof(host), service, sizeof(service), NI_DGRAM | NI_NUMERICSERV | NI_NUMERICHOST)) {
-				snprintf(buf, sizeof(buf) - 1, (peer->endpoint.addr.sa_family == AF_INET6 && strchr(host, ':')) ? "[%s]:%s" : "%s:%s", host, service);
-				printf("Endpoint = %s\n", buf);
+				if (peer->endpoint.addr.sa_family == AF_INET6 && strchr(host, ':'))
+					printf("Endpoint = [%s]:%s\n", host, service);
+				else
+					printf("Endpoint = %s:%s\n", host, service);
 			}
 		}
 

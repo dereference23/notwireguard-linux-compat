@@ -88,15 +88,15 @@ configure_peers() {
 
 	n1 wg set wg0 \
 		private-key <(echo "$key1") \
-		preshared-key <(echo "$psk") \
 		listen-port 1 \
 		peer "$pub2" \
+			preshared-key <(echo "$psk") \
 			allowed-ips 192.168.241.2/32,fd00::2/128
 	n2 wg set wg0 \
 		private-key <(echo "$key2") \
-		preshared-key <(echo "$psk") \
 		listen-port 2 \
 		peer "$pub1" \
+			preshared-key <(echo "$psk") \
 			allowed-ips 192.168.241.1/32,fd00::1/128
 
 	ip1 link set up dev wg0
@@ -140,6 +140,10 @@ big_mtu=$(( 34816 - 1500 + $orig_mtu ))
 # Test using IPv4 as outer transport
 n1 wg set wg0 peer "$pub2" endpoint 127.0.0.1:2
 n2 wg set wg0 peer "$pub1" endpoint 127.0.0.1:1
+# Before calling tests, we first make sure that the stats counters are working
+n2 ping -c 10 -f -W 1 192.168.241.1
+{ read _; read _; read _; read rx_bytes _; read _; read tx_bytes _; } < <(ip2 -stats link show dev wg0)
+[[ $rx_bytes -ge 1052 && $tx_bytes -ge 1516 && $rx_bytes -lt 2500 && $rx_bytes -lt 2500 ]]
 tests
 ip1 link set wg0 mtu $big_mtu
 ip2 link set wg0 mtu $big_mtu
