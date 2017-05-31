@@ -8,20 +8,15 @@
 #include "hashtables.h"
 #include "peer.h"
 #include "uapi.h"
-
-static int clear_peer_endpoint_src(struct wireguard_peer *peer, void *data)
-{
-	socket_clear_peer_endpoint_src(peer);
-	return 0;
-}
-
 static int set_device_port(struct wireguard_device *wg, u16 port)
 {
+	struct wireguard_peer *peer, *temp;
 	socket_uninit(wg);
 	wg->incoming_port = port;
 	if (!(netdev_pub(wg)->flags & IFF_UP))
 		return 0;
-	peer_for_each_unlocked(wg, clear_peer_endpoint_src, NULL);
+	peer_for_each (wg, peer, temp, false)
+		socket_clear_peer_endpoint_src(peer);
 	return socket_init(wg);
 }
 
@@ -133,6 +128,7 @@ int config_set_device(struct wireguard_device *wg, void __user *user_device)
 {
 	int ret;
 	size_t i, offset;
+	struct wireguard_peer *peer, *temp;
 	struct wgdevice in_device;
 	void __user *user_peer;
 	bool modified_static_identity = false;
@@ -152,7 +148,8 @@ int config_set_device(struct wireguard_device *wg, void __user *user_device)
 
 	if (in_device.fwmark || (!in_device.fwmark && (in_device.flags & WGDEVICE_REMOVE_FWMARK))) {
 		wg->fwmark = in_device.fwmark;
-		peer_for_each_unlocked(wg, clear_peer_endpoint_src, NULL);
+		peer_for_each (wg, peer, temp, false)
+			socket_clear_peer_endpoint_src(peer);
 	}
 
 	if (in_device.port) {
@@ -182,8 +179,13 @@ int config_set_device(struct wireguard_device *wg, void __user *user_device)
 		modified_static_identity = true;
 	}
 
-	if (modified_static_identity)
+	if (modified_static_identity) {
+		peer_for_each (wg, peer, temp, false) {
+			if (!noise_precompute_static_static(peer))
+				peer_remove(peer);
+		}
 		cookie_checker_precompute_device_keys(&wg->cookie_checker);
+	}
 
 	for (i = 0, offset = 0, user_peer = user_device + sizeof(struct wgdevice); i < in_device.num_peers; ++i, user_peer += offset) {
 		ret = set_peer(wg, user_peer, &offset);
@@ -239,10 +241,9 @@ static int populate_ipmask(void *ctx, union nf_inet_addr ip, u8 cidr, int family
 	return ret;
 }
 
-static int populate_peer(struct wireguard_peer *peer, void *ctx)
+static int populate_peer(struct wireguard_peer *peer, struct data_remaining *data)
 {
 	int ret = 0;
-	struct data_remaining *data = ctx;
 	void __user *upeer = data->data;
 	struct wgpeer out_peer;
 	struct data_remaining ipmasks_data = { NULL };
@@ -286,6 +287,7 @@ static int populate_peer(struct wireguard_peer *peer, void *ctx)
 int config_get_device(struct wireguard_device *wg, void __user *user_device)
 {
 	int ret;
+	struct wireguard_peer *peer, *temp;
 	struct net_device *dev = netdev_pub(wg);
 	struct data_remaining peer_data = { NULL };
 	struct wgdevice out_device;
@@ -315,8 +317,7 @@ int config_get_device(struct wireguard_device *wg, void __user *user_device)
 	out_device.version_magic = WG_API_VERSION_MAGIC;
 	out_device.port = wg->incoming_port;
 	out_device.fwmark = wg->fwmark;
-	strncpy(out_device.interface, dev->name, IFNAMSIZ - 1);
-	out_device.interface[IFNAMSIZ - 1] = 0;
+	memcpy(out_device.interface, dev->name, IFNAMSIZ);
 
 	down_read(&wg->static_identity.lock);
 	if (wg->static_identity.has_identity) {
@@ -327,7 +328,13 @@ int config_get_device(struct wireguard_device *wg, void __user *user_device)
 
 	peer_data.out_len = in_device.peers_size;
 	peer_data.data = user_device + sizeof(struct wgdevice);
-	ret = peer_for_each_unlocked(wg, populate_peer, &peer_data);
+
+	ret = 0;
+	peer_for_each (wg, peer, temp, false) {
+		ret = populate_peer(peer, &peer_data);
+		if (ret)
+			break;
+	}
 	if (ret)
 		goto out;
 	out_device.num_peers = peer_data.count;

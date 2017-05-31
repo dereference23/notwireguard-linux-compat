@@ -218,7 +218,7 @@ static inline void queue_encrypt_reset(struct sk_buff_head *queue, struct noise_
 {
 	struct sk_buff *skb, *tmp;
 	bool have_simd = chacha20poly1305_init_simd();
-	skb_queue_walk_safe(queue, skb, tmp) {
+	skb_queue_walk_safe (queue, skb, tmp) {
 		if (unlikely(!skb_encrypt(skb, keypair, have_simd))) {
 			__skb_unlink(skb, queue);
 			kfree_skb(skb);
@@ -234,7 +234,13 @@ static inline void queue_encrypt_reset(struct sk_buff_head *queue, struct noise_
 static void begin_parallel_encryption(struct padata_priv *padata)
 {
 	struct encryption_ctx *ctx = container_of(padata, struct encryption_ctx, padata);
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
+	local_bh_enable();
+#endif
 	queue_encrypt_reset(&ctx->queue, ctx->keypair);
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
+	local_bh_disable();
+#endif
 	padata_do_serial(padata);
 }
 
@@ -273,7 +279,7 @@ int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer)
 		goto err_rcu;
 	rcu_read_unlock_bh();
 
-	skb_queue_walk(queue, skb) {
+	skb_queue_walk (queue, skb) {
 		if (unlikely(!get_encryption_nonce(&PACKET_CB(skb)->nonce, &keypair->sending)))
 			goto err;
 
@@ -345,7 +351,7 @@ static void finish_decrypt_packet(struct decryption_ctx *ctx)
 		return;
 
 	if (unlikely(!counter_validate(&ctx->keypair->receiving.counter, PACKET_CB(ctx->skb)->nonce))) {
-		net_dbg_ratelimited("Packet has invalid nonce %Lu (max %Lu)\n", PACKET_CB(ctx->skb)->nonce, ctx->keypair->receiving.counter.receive.counter);
+		net_dbg_ratelimited("%s: Packet has invalid nonce %Lu (max %Lu)\n", netdev_pub(ctx->keypair->entry.peer->device)->name, PACKET_CB(ctx->skb)->nonce, ctx->keypair->receiving.counter.receive.counter);
 		peer_put(ctx->keypair->entry.peer);
 		noise_keypair_put(ctx->keypair);
 		dev_kfree_skb(ctx->skb);
@@ -362,7 +368,13 @@ static void finish_decrypt_packet(struct decryption_ctx *ctx)
 static void begin_parallel_decryption(struct padata_priv *padata)
 {
 	struct decryption_ctx *ctx = container_of(padata, struct decryption_ctx, padata);
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
+	local_bh_enable();
+#endif
 	begin_decrypt_packet(ctx);
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
+	local_bh_disable();
+#endif
 	padata_do_serial(padata);
 }
 

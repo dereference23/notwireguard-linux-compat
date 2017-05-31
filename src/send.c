@@ -27,7 +27,7 @@ static void packet_send_handshake_initiation(struct wireguard_peer *peer)
 	peer->last_sent_handshake = get_jiffies_64();
 	up_write(&peer->handshake.lock);
 
-	net_dbg_ratelimited("Sending handshake initiation to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
+	net_dbg_ratelimited("%s: Sending handshake initiation to peer %Lu (%pISpfsc)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
 
 	if (noise_handshake_create_initiation(&packet, &peer->handshake)) {
 		cookie_add_mac_to_packet(&packet, sizeof(packet), peer);
@@ -44,8 +44,11 @@ void packet_send_queued_handshakes(struct work_struct *work)
 	peer_put(peer);
 }
 
-void packet_queue_handshake_initiation(struct wireguard_peer *peer)
+void packet_queue_handshake_initiation(struct wireguard_peer *peer, bool is_retry)
 {
+	if (!is_retry)
+		peer->timer_handshake_attempts = 0;
+
 	/* First checking the timestamp here is just an optimization; it will
 	 * be caught while properly locked inside the actual work queue. */
 	if (!time_is_before_jiffies64(peer->last_sent_handshake + REKEY_TIMEOUT))
@@ -56,7 +59,7 @@ void packet_queue_handshake_initiation(struct wireguard_peer *peer)
 		return;
 
 	/* Queues up calling packet_send_queued_handshakes(peer), where we do a peer_put(peer) after: */
-	if (!queue_work(peer->device->handshake_wq, &peer->transmit_handshake_work))
+	if (!queue_work(peer->device->peer_wq, &peer->transmit_handshake_work))
 		peer_put(peer); /* If the work was already queued, we want to drop the extra reference */
 }
 
@@ -64,7 +67,7 @@ void packet_send_handshake_response(struct wireguard_peer *peer)
 {
 	struct message_handshake_response packet;
 
-	net_dbg_ratelimited("Sending handshake response to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
+	net_dbg_ratelimited("%s: Sending handshake response to peer %Lu (%pISpfsc)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
 	peer->last_sent_handshake = get_jiffies_64();
 
 	if (noise_handshake_create_response(&packet, &peer->handshake)) {
@@ -81,7 +84,7 @@ void packet_send_handshake_cookie(struct wireguard_device *wg, struct sk_buff *i
 {
 	struct message_handshake_cookie packet;
 
-	net_dbg_skb_ratelimited("Sending cookie response for denied handshake message for %pISpfsc\n", initiating_skb);
+	net_dbg_skb_ratelimited("%s: Sending cookie response for denied handshake message for %pISpfsc\n", netdev_pub(wg)->name, initiating_skb);
 	cookie_message_create(&packet, initiating_skb, sender_index, &wg->cookie_checker);
 	socket_send_buffer_as_reply_to_skb(wg, initiating_skb, &packet, sizeof(packet));
 }
@@ -100,7 +103,7 @@ static inline void keep_key_fresh(struct wireguard_peer *peer)
 	rcu_read_unlock_bh();
 
 	if (send)
-		packet_queue_handshake_initiation(peer);
+		packet_queue_handshake_initiation(peer, false);
 }
 
 void packet_send_keepalive(struct wireguard_peer *peer)
@@ -113,7 +116,7 @@ void packet_send_keepalive(struct wireguard_peer *peer)
 		skb_reserve(skb, DATA_PACKET_HEAD_ROOM);
 		skb->dev = netdev_pub(peer->device);
 		skb_queue_tail(&peer->tx_packet_queue, skb);
-		net_dbg_ratelimited("Sending keepalive packet to peer %Lu (%pISpfsc)\n", peer->internal_id, &peer->endpoint.addr);
+		net_dbg_ratelimited("%s: Sending keepalive packet to peer %Lu (%pISpfsc)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
 	}
 	packet_send_queue(peer);
 }
@@ -127,7 +130,7 @@ void packet_create_data_done(struct sk_buff_head *queue, struct wireguard_peer *
 		return;
 
 	timers_any_authenticated_packet_traversal(peer);
-	skb_queue_walk_safe(queue, skb, tmp) {
+	skb_queue_walk_safe (queue, skb, tmp) {
 		is_keepalive = skb->len == message_data_len(0);
 		if (likely(!socket_send_skb_to_peer(peer, skb, PACKET_CB(skb)->ds) && !is_keepalive))
 			data_sent = true;
@@ -183,7 +186,7 @@ void packet_send_queue(struct wireguard_peer *peer)
 		skb_queue_splice(&queue, &peer->tx_packet_queue);
 		spin_unlock_bh(&peer->tx_packet_queue.lock);
 
-		packet_queue_handshake_initiation(peer);
+		packet_queue_handshake_initiation(peer, false);
 		break;
 	default:
 		/* If we failed for any other reason, we want to just free the packets and

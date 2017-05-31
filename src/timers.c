@@ -27,8 +27,9 @@ static inline unsigned long slack_time(unsigned long time)
 static void expired_retransmit_handshake(unsigned long ptr)
 {
 	peer_get_from_ptr(ptr);
-	pr_debug("Handshake for peer %Lu (%pISpfsc) did not complete after %d seconds, retrying\n", peer->internal_id, &peer->endpoint.addr, REKEY_TIMEOUT / HZ);
 	if (peer->timer_handshake_attempts > MAX_TIMER_HANDSHAKES) {
+		pr_debug("%s: Handshake for peer %Lu (%pISpfsc) did not complete after %d attempts, giving up\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr, MAX_TIMER_HANDSHAKES + 2);
+
 		del_timer(&peer->timer_send_keepalive);
 		/* We remove all existing packets and don't try again,
 		 * if we try unsuccessfully for too long to make a handshake. */
@@ -37,15 +38,15 @@ static void expired_retransmit_handshake(unsigned long ptr)
 		 * of a partial exchange. */
 		if (likely(peer->timers_enabled))
 			mod_timer(&peer->timer_kill_ephemerals, jiffies + (REJECT_AFTER_TIME * 3));
-		goto out;
+	} else {
+		++peer->timer_handshake_attempts;
+		pr_debug("%s: Handshake for peer %Lu (%pISpfsc) did not complete after %d seconds, retrying (try %d)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr, REKEY_TIMEOUT / HZ, peer->timer_handshake_attempts + 1);
+
+		/* We clear the endpoint address src address, in case this is the cause of trouble. */
+		socket_clear_peer_endpoint_src(peer);
+
+		packet_queue_handshake_initiation(peer, true);
 	}
-
-	/* We clear the endpoint address src address, in case this is the cause of trouble. */
-	socket_clear_peer_endpoint_src(peer);
-
-	packet_queue_handshake_initiation(peer);
-	++peer->timer_handshake_attempts;
-out:
 	peer_put(peer);
 }
 
@@ -64,23 +65,23 @@ static void expired_send_keepalive(unsigned long ptr)
 static void expired_new_handshake(unsigned long ptr)
 {
 	peer_get_from_ptr(ptr);
-	pr_debug("Retrying handshake with peer %Lu (%pISpfsc) because we stopped hearing back after %d seconds\n", peer->internal_id, &peer->endpoint.addr, (KEEPALIVE_TIMEOUT + REKEY_TIMEOUT) / HZ);
+	pr_debug("%s: Retrying handshake with peer %Lu (%pISpfsc) because we stopped hearing back after %d seconds\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr, (KEEPALIVE_TIMEOUT + REKEY_TIMEOUT) / HZ);
 	/* We clear the endpoint address src address, in case this is the cause of trouble. */
 	socket_clear_peer_endpoint_src(peer);
-	packet_queue_handshake_initiation(peer);
+	packet_queue_handshake_initiation(peer, false);
 	peer_put(peer);
 }
 
 static void expired_kill_ephemerals(unsigned long ptr)
 {
 	peer_get_from_ptr(ptr);
-	if (!queue_work(peer->device->handshake_wq, &peer->clear_peer_work)) /* Takes our reference. */
+	if (!queue_work(peer->device->peer_wq, &peer->clear_peer_work)) /* Takes our reference. */
 		peer_put(peer); /* If the work was already on the queue, we want to drop the extra reference */
 }
 static void queued_expired_kill_ephemerals(struct work_struct *work)
 {
 	struct wireguard_peer *peer = container_of(work, struct wireguard_peer, clear_peer_work);
-	pr_debug("Zeroing out all keys for peer %Lu (%pISpfsc), since we haven't received a new one in %d seconds\n", peer->internal_id, &peer->endpoint.addr, (REJECT_AFTER_TIME * 3) / HZ);
+	pr_debug("%s: Zeroing out all keys for peer %Lu (%pISpfsc), since we haven't received a new one in %d seconds\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr, (REJECT_AFTER_TIME * 3) / HZ);
 	noise_handshake_clear(&peer->handshake);
 	noise_keypairs_clear(&peer->keypairs);
 	peer_put(peer);
@@ -129,12 +130,13 @@ void timers_handshake_initiated(struct wireguard_peer *peer)
 	}
 }
 
-/* Should be called after a handshake response message is received and processed. */
+/* Should be called after a handshake response message is received and processed or when getting key confirmation via the first data message. */
 void timers_handshake_complete(struct wireguard_peer *peer)
 {
 	if (likely(peer->timers_enabled))
 		del_timer(&peer->timer_retransmit_handshake);
 	peer->timer_handshake_attempts = 0;
+	do_gettimeofday(&peer->walltime_last_handshake);
 }
 
 /* Should be called after an ephemeral key is created, which is before sending a handshake response or after receiving a handshake response. */
@@ -142,10 +144,9 @@ void timers_ephemeral_key_created(struct wireguard_peer *peer)
 {
 	if (likely(peer->timers_enabled))
 		mod_timer(&peer->timer_kill_ephemerals, jiffies + (REJECT_AFTER_TIME * 3));
-	do_gettimeofday(&peer->walltime_last_handshake);
 }
 
-/* Should be called before an packet with authentication -- data, keepalive, either handshake -- is sent, or after one is received. */
+/* Should be called before a packet with authentication -- data, keepalive, either handshake -- is sent, or after one is received. */
 void timers_any_authenticated_packet_traversal(struct wireguard_peer *peer)
 {
 	if (peer->persistent_keepalive_interval && likely(peer->timers_enabled))

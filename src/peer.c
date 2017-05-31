@@ -34,7 +34,10 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 	peer->internal_id = atomic64_inc_return(&peer_counter);
 	peer->device = wg;
 	cookie_init(&peer->latest_cookie);
-	noise_handshake_init(&peer->handshake, &wg->static_identity, public_key, preshared_key, peer);
+	if (!noise_handshake_init(&peer->handshake, &wg->static_identity, public_key, preshared_key, peer)) {
+		kfree(peer);
+		return NULL;
+	}
 	cookie_checker_precompute_peer_keys(peer);
 	mutex_init(&peer->keypairs.keypair_update_lock);
 	INIT_WORK(&peer->transmit_handshake_work, packet_send_queued_handshakes);
@@ -43,7 +46,7 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 	kref_init(&peer->refcount);
 	pubkey_hashtable_add(&wg->peer_hashtable, peer);
 	list_add_tail(&peer->peer_list, &wg->peer_list);
-	pr_debug("Peer %Lu created\n", peer->internal_id);
+	pr_debug("%s: Peer %Lu created\n", netdev_pub(wg)->name, peer->internal_id);
 	return peer;
 }
 
@@ -77,8 +80,8 @@ void peer_remove(struct wireguard_peer *peer)
 	timers_uninit_peer(peer);
 	routing_table_remove_by_peer(&peer->device->peer_routing_table, peer);
 	pubkey_hashtable_remove(&peer->device->peer_hashtable, peer);
-	if (peer->device->handshake_wq)
-		flush_workqueue(peer->device->handshake_wq);
+	if (peer->device->peer_wq)
+		flush_workqueue(peer->device->peer_wq);
 	skb_queue_purge(&peer->tx_packet_queue);
 	peer_put(peer);
 }
@@ -86,7 +89,7 @@ void peer_remove(struct wireguard_peer *peer)
 static void rcu_release(struct rcu_head *rcu)
 {
 	struct wireguard_peer *peer = container_of(rcu, struct wireguard_peer, rcu);
-	pr_debug("Peer %Lu (%pISpfsc) destroyed\n", peer->internal_id, &peer->endpoint.addr);
+	pr_debug("%s: Peer %Lu (%pISpfsc) destroyed\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
 	skb_queue_purge(&peer->tx_packet_queue);
 	dst_cache_destroy(&peer->endpoint_cache);
 	kzfree(peer);
@@ -105,38 +108,11 @@ void peer_put(struct wireguard_peer *peer)
 	kref_put(&peer->refcount, kref_release);
 }
 
-int peer_for_each_unlocked(struct wireguard_device *wg, int (*fn)(struct wireguard_peer *peer, void *ctx), void *data)
-{
-	struct wireguard_peer *peer, *temp;
-	int ret = 0;
-
-	lockdep_assert_held(&wg->device_update_lock);
-	list_for_each_entry_safe(peer, temp, &wg->peer_list, peer_list) {
-		peer = peer_rcu_get(peer);
-		if (unlikely(!peer))
-			continue;
-		ret = fn(peer, data);
-		peer_put(peer);
-		if (ret < 0)
-			break;
-	}
-	return ret;
-}
-
-int peer_for_each(struct wireguard_device *wg, int (*fn)(struct wireguard_peer *peer, void *ctx), void *data)
-{
-	int ret;
-	mutex_lock(&wg->device_update_lock);
-	ret = peer_for_each_unlocked(wg, fn, data);
-	mutex_unlock(&wg->device_update_lock);
-	return ret;
-}
-
 void peer_remove_all(struct wireguard_device *wg)
 {
 	struct wireguard_peer *peer, *temp;
 	lockdep_assert_held(&wg->device_update_lock);
-	list_for_each_entry_safe(peer, temp, &wg->peer_list, peer_list)
+	list_for_each_entry_safe (peer, temp, &wg->peer_list, peer_list)
 		peer_remove(peer);
 }
 
@@ -145,7 +121,7 @@ unsigned int peer_total_count(struct wireguard_device *wg)
 	unsigned int i = 0;
 	struct wireguard_peer *peer;
 	lockdep_assert_held(&wg->device_update_lock);
-	list_for_each_entry(peer, &wg->peer_list, peer_list)
+	list_for_each_entry (peer, &wg->peer_list, peer_list)
 		++i;
 	return i;
 }

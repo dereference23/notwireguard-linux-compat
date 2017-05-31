@@ -9,8 +9,6 @@
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 #error "WireGuard requires Linux >= 3.10"
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 0)
-#warning "WireGuard support for kernels < 4.1 should work but is slightly experimental."
 #endif
 
 /* These conditionals can't be enforced by an out of tree module very easily,
@@ -141,7 +139,7 @@ static inline void netif_keep_dst(struct net_device *dev)
 	typeof(type) __percpu *pcpu_stats = alloc_percpu(type);		\
 	if (pcpu_stats)	{						\
 		int __cpu;						\
-		for_each_possible_cpu(__cpu) {				\
+		for_each_possible_cpu (__cpu) {				\
 			typeof(type) *stat;				\
 			stat = per_cpu_ptr(pcpu_stats, __cpu);		\
 			u64_stats_init(&stat->syncp);			\
@@ -240,10 +238,10 @@ static inline struct net_device *netdev_pub(void *dev)
 #endif
 
 #if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
-#define net_dbg_skb_ratelimited(fmt, skb, ...) do { \
+#define net_dbg_skb_ratelimited(fmt, dev, skb, ...) do { \
 	struct endpoint __endpoint; \
 	socket_endpoint_from_skb(&__endpoint, skb); \
-	net_dbg_ratelimited(fmt, &__endpoint.addr, ##__VA_ARGS__); \
+	net_dbg_ratelimited(fmt, dev, &__endpoint.addr, ##__VA_ARGS__); \
 } while(0)
 #else
 #define net_dbg_skb_ratelimited(fmt, skb, ...)
