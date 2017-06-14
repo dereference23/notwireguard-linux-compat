@@ -1,3 +1,9 @@
+wireguard (0.0.20170613-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 14 Jun 2017 13:38:22 -0400
+
 wireguard (0.0.20170531-2) unstable; urgency=medium
 
   * add systemd to build-dependencies to learn systemdsystemunitdir
