@@ -10,10 +10,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/dchest/blake2s"
 	"github.com/titanous/noise"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/crypto/blake2s"
 )
 
 func ipChecksum(buf []byte) uint16 {
@@ -41,15 +41,15 @@ func main() {
 	preshared, _ := base64.StdEncoding.DecodeString("FpCyhws9cxwWoV4xELtfJvjJN+zQVRPISllRWgeopVE=")
 	cs := noise.NewCipherSuite(noise.DH25519, noise.CipherChaChaPoly, noise.HashBLAKE2s)
 	hs := noise.NewHandshakeState(noise.Config{
-		CipherSuite:   cs,
-		Random:        rand.Reader,
-		Pattern:       noise.HandshakeIK,
-		Initiator:     true,
-		Prologue:      []byte("WireGuard v1 zx2c4 Jason@zx2c4.com"),
-		PresharedKey:  preshared,
+		CipherSuite:           cs,
+		Random:                rand.Reader,
+		Pattern:               noise.HandshakeIK,
+		Initiator:             true,
+		Prologue:              []byte("WireGuard v1 zx2c4 Jason@zx2c4.com"),
+		PresharedKey:          preshared,
 		PresharedKeyPlacement: 2,
-		StaticKeypair: noise.DHKey{Private: ourPrivate, Public: ourPublic},
-		PeerStatic:    theirPublic,
+		StaticKeypair:         noise.DHKey{Private: ourPrivate, Public: ourPublic},
+		PeerStatic:            theirPublic,
 	})
 	conn, err := net.Dial("udp", "demo.wireguard.io:12913")
 	if err != nil {
@@ -61,18 +61,18 @@ func main() {
 	now := time.Now()
 	tai64n := make([]byte, 12)
 	binary.BigEndian.PutUint64(tai64n[:], 4611686018427387914+uint64(now.Unix()))
-	binary.BigEndian.PutUint32(tai64n[8:], uint32(now.UnixNano()))
+	binary.BigEndian.PutUint32(tai64n[8:], uint32(now.Nanosecond()))
 	initiationPacket := make([]byte, 8)
-	initiationPacket[0] = 1 // Type: Initiation
-	initiationPacket[1] = 0 // Reserved
-	initiationPacket[2] = 0	// Reserved
-	initiationPacket[3] = 0	// Reserved
+	initiationPacket[0] = 1                                 // Type: Initiation
+	initiationPacket[1] = 0                                 // Reserved
+	initiationPacket[2] = 0                                 // Reserved
+	initiationPacket[3] = 0                                 // Reserved
 	binary.LittleEndian.PutUint32(initiationPacket[4:], 28) // Sender index: 28 (arbitrary)
 	initiationPacket, _, _ = hs.WriteMessage(initiationPacket, tai64n)
-	hasher, _ := blake2s.New(&blake2s.Config{Size: 32})
+	hasher, _ := blake2s.New256(nil)
 	hasher.Write([]byte("mac1----"))
 	hasher.Write(theirPublic)
-	hasher, _ = blake2s.New(&blake2s.Config{Size: 16, Key: hasher.Sum(nil)})
+	hasher, _ = blake2s.New128(hasher.Sum(nil))
 	hasher.Write(initiationPacket)
 	initiationPacket = append(initiationPacket, hasher.Sum(nil)[:16]...)
 	initiationPacket = append(initiationPacket, make([]byte, 16)...)
@@ -127,22 +127,22 @@ func main() {
 		Dst:      net.IPv4(10, 189, 129, 1),
 	}).Marshal()
 	binary.BigEndian.PutUint16(pingHeader[2:], uint16(ipv4.HeaderLen+len(pingMessage))) // fix the length endianness on BSDs
-	pingData := append(pingHeader, pingMessage...)
+	pingData := append(append(pingHeader, pingMessage...), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 	binary.BigEndian.PutUint16(pingData[10:], ipChecksum(pingData))
 	pingPacket := make([]byte, 16)
-	pingPacket[0] = 4 // Type: Data
-	pingPacket[1] = 0 // Reserved
-	pingPacket[2] = 0 // Reserved
-	pingPacket[3] = 0 // Reserved
-	binary.LittleEndian.PutUint32(pingPacket[4:], theirIndex)
-	binary.LittleEndian.PutUint64(pingPacket[8:], 0) // Nonce
-	pingPacket = sendCipher.Encrypt(pingPacket, nil, pingData)
+	pingPacket[0] = 4                                          // Type: Data
+	pingPacket[1] = 0                                          // Reserved
+	pingPacket[2] = 0                                          // Reserved
+	pingPacket[3] = 0                                          // Reserved
+	binary.LittleEndian.PutUint32(pingPacket[4:], theirIndex)  // Their index
+	binary.LittleEndian.PutUint64(pingPacket[8:], 0)           // Nonce
+	pingPacket = sendCipher.Encrypt(pingPacket, nil, pingData) // Payload data
 	if _, err := conn.Write(pingPacket); err != nil {
 		log.Fatalf("error writing ping message: %s", err)
 	}
 
 	// read ICMP Echo Reply packet
-	replyPacket := make([]byte, 128)
+	replyPacket := make([]byte, 80)
 	n, err = conn.Read(replyPacket)
 	if err != nil {
 		log.Fatalf("error reading ping reply message: %s", err)
@@ -171,5 +171,17 @@ func main() {
 
 	if echo.ID != 921 || echo.Seq != 438 || string(echo.Data) != "WireGuard" {
 		log.Fatalf("incorrect echo response: %#v", echo)
+	}
+
+	keepalivePacket := make([]byte, 16)
+	keepalivePacket[0] = 4                                          // Type: Data
+	keepalivePacket[1] = 0                                          // Reserved
+	keepalivePacket[2] = 0                                          // Reserved
+	keepalivePacket[3] = 0                                          // Reserved
+	binary.LittleEndian.PutUint32(keepalivePacket[4:], theirIndex)  // Their index
+	binary.LittleEndian.PutUint64(keepalivePacket[8:], 1)           // Nonce
+	keepalivePacket = sendCipher.Encrypt(keepalivePacket, nil, nil) // Empty data means keepalive
+	if _, err := conn.Write(keepalivePacket); err != nil {
+		log.Fatalf("error writing keepalive message: %s", err)
 	}
 }
