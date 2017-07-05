@@ -6,25 +6,28 @@
 #include <linux/kconfig.h>
 #include <linux/version.h>
 #include <linux/types.h>
+#include <generated/utsrelease.h>
+
+#ifdef RHEL_MAJOR
+#if RHEL_MAJOR == 7
+#define ISRHEL7
+#endif
+#endif
+#ifdef UTS_UBUNTU_RELEASE_ABI
+#if LINUX_VERSION_CODE == KERNEL_VERSION(3, 13, 11)
+#define ISUBUNTU1404
+#endif
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 #error "WireGuard requires Linux >= 3.10"
-#endif
-
-/* These conditionals can't be enforced by an out of tree module very easily,
- * so we stick them here in compat instead. */
-#if !IS_ENABLED(CONFIG_NETFILTER_XT_MATCH_HASHLIMIT)
-#error "WireGuard requires CONFIG_NETFILTER_XT_MATCH_HASHLIMIT."
-#endif
-#if IS_ENABLED(CONFIG_IPV6) && !IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
-#error "WireGuard requires CONFIG_IP6_NF_IPTABLES when using CONFIG_IPV6."
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0) && defined(CONFIG_X86_64)
 #define CONFIG_AS_SSSE3
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0) && !defined(ISRHEL7)
 #define headers_start data
 #define headers_end data
 #endif
@@ -42,24 +45,23 @@
 #define RCU_LOCKDEP_WARN(cond, message) rcu_lockdep_assert(!(cond), message)
 #endif
 
-#if (LINUX_VERSION_CODE > KERNEL_VERSION(3, 19, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 6)) || \
+#if ((LINUX_VERSION_CODE > KERNEL_VERSION(3, 19, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 6)) || \
     (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 12) && LINUX_VERSION_CODE > KERNEL_VERSION(3, 17, 0)) || \
     (LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 8) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)) || \
-    LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 40)
+    LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 40)) && !defined(ISRHEL7) && !defined(ISUBUNTU1404)
 #define dev_recursion_level() 0
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0) && !defined(ISRHEL7)
 #define ipv6_dst_lookup(a, b, c, d) ipv6_dst_lookup(b, c, d)
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 5) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)) || \
+#if ((LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 5) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)) || \
     (LINUX_VERSION_CODE < KERNEL_VERSION(4, 1, 17) && LINUX_VERSION_CODE > KERNEL_VERSION(3, 19, 0)) || \
     (LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 27) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)) || \
     (LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 8) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0)) || \
     (LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 40) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)) || \
-    (LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 54))
-
+    (LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 54))) && !defined(ISUBUNTU1404)
 #include <linux/if.h>
 #include <net/ip_tunnels.h>
 #define IP6_ECN_set_ce(a, b) IP6_ECN_set_ce(b)
@@ -72,7 +74,7 @@
 #define time_is_after_eq_jiffies64(a) time_before_eq64(get_jiffies_64(), a)
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0) && IS_ENABLED(CONFIG_IPV6)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0) && IS_ENABLED(CONFIG_IPV6) && !defined(ISRHEL7)
 #include <net/ipv6.h>
 struct ipv6_stub_type {
 	void *udpv6_encap_enable;
@@ -123,17 +125,17 @@ static inline u32 get_random_u32(void)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0) && !defined(ISRHEL7)
 static inline void netif_keep_dst(struct net_device *dev)
 {
 	dev->priv_flags &= ~IFF_XMIT_DST_RELEASE;
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0) && !defined(ISRHEL7)
 #define pcpu_sw_netstats pcpu_tstats
 #define netdev_alloc_pcpu_stats alloc_percpu
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0) && !defined(ISRHEL7)
 #define netdev_alloc_pcpu_stats(type)					\
 ({									\
 	typeof(type) __percpu *pcpu_stats = alloc_percpu(type);		\
@@ -162,7 +164,7 @@ static inline void *our_pskb_put(struct sk_buff *skb, struct sk_buff *tail, int 
 #define pskb_put our_pskb_put
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0) && !defined(ISRHEL7)
 #include <net/xfrm.h>
 static inline void skb_scrub_packet(struct sk_buff *skb, bool xnet)
 {
@@ -184,7 +186,7 @@ static inline void skb_scrub_packet(struct sk_buff *skb, bool xnet)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0) || defined(ISUBUNTU1404)) && !defined(ISRHEL7)
 #include <linux/random.h>
 static inline u32 prandom_u32_max(u32 ep_ro)
 {
@@ -192,7 +194,7 @@ static inline u32 prandom_u32_max(u32 ep_ro)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 75)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 75) && !defined(ISRHEL7)
 #define U8_MAX ((u8)~0U)
 #define S8_MAX ((s8)(U8_MAX >> 1))
 #define S8_MIN ((s8)(-S8_MAX - 1))
@@ -207,7 +209,7 @@ static inline u32 prandom_u32_max(u32 ep_ro)
 #define S64_MIN ((s64)(-S64_MAX - 1))
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 60)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 60) && !defined(ISRHEL7)
 /* Making this static may very well invalidate its usefulness,
  * but so it goes with compat code. */
 static inline void memzero_explicit(void *s, size_t count)
@@ -217,7 +219,7 @@ static inline void memzero_explicit(void *s, size_t count)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0) && !defined(ISRHEL7)
 static const struct in6_addr our_in6addr_any = IN6ADDR_ANY_INIT;
 #define in6addr_any our_in6addr_any
 #endif
@@ -274,6 +276,54 @@ static inline int get_random_bytes_wait(void *buf, int nbytes)
 	get_random_bytes(buf, nbytes);
 	return 0;
 }
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0) && !defined(ISRHEL7)
+#define system_power_efficient_wq system_unbound_wq
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0) && !defined(ISRHEL7)
+#include <linux/ktime.h>
+static inline u64 ktime_get_ns(void)
+{
+	return ktime_to_ns(ktime_get());
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)
+#include <linux/inetdevice.h>
+#define inet_confirm_addr(a,b,c,d,e) inet_confirm_addr(b,c,d,e)
+#endif
+
+/* https://lkml.org/lkml/2017/6/23/790 */
+#if IS_ENABLED(CONFIG_NF_CONNTRACK)
+#include <linux/ip.h>
+#include <linux/icmpv6.h>
+#include <net/icmp.h>
+#include <net/netfilter/nf_conntrack.h>
+#include <net/netfilter/nf_nat_core.h>
+static inline void new_icmp_send(struct sk_buff *skb_in, int type, int code, __be32 info)
+{
+	enum ip_conntrack_info ctinfo;
+	struct nf_conn *ct = nf_ct_get(skb_in, &ctinfo);
+	if (skb_network_header(skb_in) < skb_in->head || (skb_network_header(skb_in) + sizeof(struct iphdr)) > skb_tail_pointer(skb_in))
+		return;
+	if (ct)
+		ip_hdr(skb_in)->saddr = ct->tuplehash[0].tuple.src.u3.ip;
+	icmp_send(skb_in, type, code, info);
+}
+static inline void new_icmpv6_send(struct sk_buff *skb, u8 type, u8 code, __u32 info)
+{
+	enum ip_conntrack_info ctinfo;
+	struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
+	if (skb_network_header(skb) < skb->head || (skb_network_header(skb) + sizeof(struct ipv6hdr)) > skb_tail_pointer(skb))
+		return;
+	if (ct)
+		ipv6_hdr(skb)->saddr = ct->tuplehash[0].tuple.src.u3.in6;
+	icmpv6_send(skb, type, code, info);
+}
+#define icmp_send(a,b,c,d) new_icmp_send(a,b,c,d)
+#define icmpv6_send(a,b,c,d) new_icmpv6_send(a,b,c,d)
 #endif
 
 /* https://lkml.org/lkml/2015/6/12/415 */

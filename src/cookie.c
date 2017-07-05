@@ -4,6 +4,7 @@
 #include "peer.h"
 #include "device.h"
 #include "messages.h"
+#include "ratelimiter.h"
 #include "crypto/blake2s.h"
 #include "crypto/chacha20poly1305.h"
 
@@ -11,16 +12,12 @@
 #include <net/ipv6.h>
 #include <crypto/algapi.h>
 
-int cookie_checker_init(struct cookie_checker *checker, struct wireguard_device *wg)
+void cookie_checker_init(struct cookie_checker *checker, struct wireguard_device *wg)
 {
-	int ret = ratelimiter_init(&checker->ratelimiter, wg);
-	if (ret)
-		return ret;
 	init_rwsem(&checker->secret_lock);
 	checker->secret_birthdate = get_jiffies_64();
 	get_random_bytes(checker->secret, NOISE_HASH_LEN);
 	checker->device = wg;
-	return 0;
 }
 
 enum { COOKIE_KEY_LABEL_LEN = 8 };
@@ -56,11 +53,6 @@ void cookie_checker_precompute_peer_keys(struct wireguard_peer *peer)
 	precompute_key(peer->latest_cookie.message_mac1_key, peer->handshake.remote_static, mac1_key_label);
 }
 
-void cookie_checker_uninit(struct cookie_checker *checker)
-{
-	ratelimiter_uninit(&checker->ratelimiter);
-}
-
 void cookie_init(struct cookie *cookie)
 {
 	memset(cookie, 0, sizeof(struct cookie));
@@ -93,9 +85,9 @@ static void make_cookie(u8 cookie[COOKIE_LEN], struct sk_buff *skb, struct cooki
 	down_read(&checker->secret_lock);
 
 	blake2s_init_key(&state, COOKIE_LEN, checker->secret, NOISE_HASH_LEN);
-	if (ip_hdr(skb)->version == 4)
+	if (skb->protocol == htons(ETH_P_IP))
 		blake2s_update(&state, (u8 *)&ip_hdr(skb)->saddr, sizeof(struct in_addr));
-	else if (ip_hdr(skb)->version == 6)
+	else if (skb->protocol == htons(ETH_P_IPV6))
 		blake2s_update(&state, (u8 *)&ipv6_hdr(skb)->saddr, sizeof(struct in6_addr));
 	blake2s_update(&state, (u8 *)&udp_hdr(skb)->source, sizeof(__be16));
 	blake2s_final(&state, cookie, COOKIE_LEN);
@@ -127,7 +119,7 @@ enum cookie_mac_state cookie_validate_packet(struct cookie_checker *checker, str
 		goto out;
 
 	ret = VALID_MAC_WITH_COOKIE_BUT_RATELIMITED;
-	if (!ratelimiter_allow(&checker->ratelimiter, skb))
+	if (!ratelimiter_allow(skb, dev_net(netdev_pub(checker->device))))
 		goto out;
 
 	ret = VALID_MAC_WITH_COOKIE;

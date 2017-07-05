@@ -5,6 +5,7 @@
 #include "timers.h"
 #include "device.h"
 #include "config.h"
+#include "ratelimiter.h"
 #include "peer.h"
 #include "uapi.h"
 #include "messages.h"
@@ -21,10 +22,8 @@
 #include <net/rtnetlink.h>
 #include <net/ip_tunnels.h>
 #include <net/addrconf.h>
-#if IS_ENABLED(CONFIG_NF_CONNTRACK)
-#include <net/netfilter/nf_conntrack.h>
-#include <net/netfilter/nf_nat_core.h>
-#endif
+
+static LIST_HEAD(device_list);
 
 static int open(struct net_device *dev)
 {
@@ -68,19 +67,27 @@ static int open(struct net_device *dev)
 #ifdef CONFIG_PM_SLEEP
 static int suspending_clear_noise_peers(struct notifier_block *nb, unsigned long action, void *data)
 {
-	struct wireguard_device *wg = container_of(nb, struct wireguard_device, clear_peers_on_suspend);
+	struct wireguard_device *wg;
 	struct wireguard_peer *peer, *temp;
-	if (action == PM_HIBERNATION_PREPARE || action == PM_SUSPEND_PREPARE) {
+
+	if (action != PM_HIBERNATION_PREPARE && action != PM_SUSPEND_PREPARE)
+		return 0;
+
+	rtnl_lock();
+	list_for_each_entry (wg, &device_list, device_list) {
 		peer_for_each (wg, peer, temp, true) {
 			noise_handshake_clear(&peer->handshake);
 			noise_keypairs_clear(&peer->keypairs);
 			if (peer->timers_enabled)
 				del_timer(&peer->timer_kill_ephemerals);
 		}
-		rcu_barrier_bh();
 	}
+	rtnl_unlock();
+	rcu_barrier_bh();
+
 	return 0;
 }
+static struct notifier_block clear_peers_on_suspend = { .notifier_call = suspending_clear_noise_peers };
 #endif
 
 static int stop(struct net_device *dev)
@@ -99,34 +106,6 @@ static int stop(struct net_device *dev)
 	return 0;
 }
 
-static void skb_unsendable(struct sk_buff *skb, struct net_device *dev)
-{
-#if IS_ENABLED(CONFIG_NF_CONNTRACK)
-	/* This conntrack stuff is because the rate limiting needs to be applied
-	 * to the original src IP, so we have to restore saddr in the IP header.
-	 * It's not needed if conntracking isn't in the kernel, because in that
-	 * case the saddr wouldn't be NAT-transformed anyway. */
-	enum ip_conntrack_info ctinfo;
-	struct nf_conn *ct = nf_ct_get(skb, &ctinfo);
-#endif
-	++dev->stats.tx_errors;
-
-	if (skb->len >= sizeof(struct iphdr) && ip_hdr(skb)->version == 4) {
-#if IS_ENABLED(CONFIG_NF_CONNTRACK)
-		if (ct)
-			ip_hdr(skb)->saddr = ct->tuplehash[0].tuple.src.u3.ip;
-#endif
-		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_HOST_UNREACH, 0);
-	} else if (skb->len >= sizeof(struct ipv6hdr) && ip_hdr(skb)->version == 6) {
-#if IS_ENABLED(CONFIG_NF_CONNTRACK)
-		if (ct)
-			ipv6_hdr(skb)->saddr = ct->tuplehash[0].tuple.src.u3.in6;
-#endif
-		icmpv6_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_ADDR_UNREACH, 0);
-	}
-	kfree_skb(skb);
-}
-
 static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct wireguard_device *wg = netdev_priv(dev);
@@ -137,7 +116,12 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 	if (unlikely(dev_recursion_level() > 4)) {
 		ret = -ELOOP;
 		net_dbg_ratelimited("%s: Routing loop detected\n", dev->name);
-		skb_unsendable(skb, dev);
+		goto err;
+	}
+
+	if (unlikely(skb_examine_untrusted_ip_hdr(skb) != skb->protocol)) {
+		ret = -EPROTONOSUPPORT;
+		net_dbg_ratelimited("%s: Invalid IP packet\n", dev->name);
 		goto err;
 	}
 
@@ -152,7 +136,7 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 	ret = peer->endpoint.addr.sa_family != AF_INET && peer->endpoint.addr.sa_family != AF_INET6;
 	read_unlock_bh(&peer->endpoint_lock);
 	if (unlikely(ret)) {
-		ret = -EHOSTUNREACH;
+		ret = -EDESTADDRREQ;
 		net_dbg_ratelimited("%s: No valid endpoint has been configured or discovered for peer %Lu\n", dev->name, peer->internal_id);
 		goto err_peer;
 	}
@@ -195,10 +179,14 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 err_peer:
 	peer_put(peer);
 err:
-	skb_unsendable(skb, dev);
+	++dev->stats.tx_errors;
+	if (skb->protocol == htons(ETH_P_IP))
+		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_HOST_UNREACH, 0);
+	else if (skb->protocol == htons(ETH_P_IPV6))
+		icmpv6_send(skb, ICMPV6_DEST_UNREACH, ICMPV6_ADDR_UNREACH, 0);
+	kfree_skb(skb);
 	return ret;
 }
-
 
 static int ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
@@ -228,6 +216,9 @@ static void destruct(struct net_device *dev)
 {
 	struct wireguard_device *wg = netdev_priv(dev);
 
+	rtnl_lock();
+	list_del(&wg->device_list);
+	rtnl_unlock();
 	mutex_lock(&wg->device_update_lock);
 	peer_remove_all(wg);
 	wg->incoming_port = 0;
@@ -239,20 +230,19 @@ static void destruct(struct net_device *dev)
 	destroy_workqueue(wg->crypt_wq);
 #endif
 	routing_table_free(&wg->peer_routing_table);
+	ratelimiter_uninit();
 	memzero_explicit(&wg->static_identity, sizeof(struct noise_static_identity));
 	skb_queue_purge(&wg->incoming_handshakes);
 	socket_uninit(wg);
-	cookie_checker_uninit(&wg->cookie_checker);
-#ifdef CONFIG_PM_SLEEP
-	unregister_pm_notifier(&wg->clear_peers_on_suspend);
-#endif
 	mutex_unlock(&wg->device_update_lock);
 	free_percpu(dev->tstats);
 	free_percpu(wg->incoming_handshakes_worker);
 	put_net(wg->creating_net);
 
 	pr_debug("%s: Interface deleted\n", dev->name);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	free_netdev(dev);
+#endif
 }
 
 static void setup(struct net_device *dev)
@@ -261,7 +251,12 @@ static void setup(struct net_device *dev)
 	enum { WG_NETDEV_FEATURES = NETIF_F_HW_CSUM | NETIF_F_RXCSUM | NETIF_F_SG | NETIF_F_GSO | NETIF_F_GSO_SOFTWARE | NETIF_F_HIGHDMA };
 
 	dev->netdev_ops = &netdev_ops;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	dev->destructor = destruct;
+#else
+	dev->priv_destructor = destruct;
+	dev->needs_free_netdev = true;
+#endif
 	dev->hard_header_len = 0;
 	dev->addr_len = 0;
 	dev->needed_headroom = DATA_PACKET_HEAD_ROOM;
@@ -298,6 +293,7 @@ static int newlink(struct net *src_net, struct net_device *dev, struct nlattr *t
 	pubkey_hashtable_init(&wg->peer_hashtable);
 	index_hashtable_init(&wg->index_hashtable);
 	routing_table_init(&wg->peer_routing_table);
+	cookie_checker_init(&wg->cookie_checker, wg);
 	INIT_LIST_HEAD(&wg->peer_list);
 
 	dev->tstats = netdev_alloc_pcpu_stats(struct pcpu_sw_netstats);
@@ -337,31 +333,23 @@ static int newlink(struct net *src_net, struct net_device *dev, struct nlattr *t
 	padata_start(wg->decrypt_pd);
 #endif
 
-	ret = cookie_checker_init(&wg->cookie_checker, wg);
+	ret = ratelimiter_init();
 	if (ret < 0)
 		goto error_8;
 
-#ifdef CONFIG_PM_SLEEP
-	wg->clear_peers_on_suspend.notifier_call = suspending_clear_noise_peers;
-	ret = register_pm_notifier(&wg->clear_peers_on_suspend);
+	ret = register_netdevice(dev);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	if (ret < 0)
 		goto error_9;
 #endif
-
-	ret = register_netdevice(dev);
-	if (ret < 0)
-		goto error_10;
-
+	list_add(&wg->device_list, &device_list);
 	pr_debug("%s: Interface created\n", dev->name);
+	return ret;
 
-	return 0;
-
-error_10:
-#ifdef CONFIG_PM_SLEEP
-	unregister_pm_notifier(&wg->clear_peers_on_suspend);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 error_9:
+	ratelimiter_uninit();
 #endif
-	cookie_checker_uninit(&wg->cookie_checker);
 error_8:
 #ifdef CONFIG_WIREGUARD_PARALLEL
 	padata_free(wg->decrypt_pd);
@@ -390,13 +378,21 @@ static struct rtnl_link_ops link_ops __read_mostly = {
 	.newlink		= newlink,
 };
 
-int device_init(void)
+int __init device_init(void)
 {
+#ifdef CONFIG_PM_SLEEP
+	int ret = register_pm_notifier(&clear_peers_on_suspend);
+	if (ret)
+		return ret;
+#endif
 	return rtnl_link_register(&link_ops);
 }
 
-void device_uninit(void)
+void __exit device_uninit(void)
 {
 	rtnl_link_unregister(&link_ops);
+#ifdef CONFIG_PM_SLEEP
+	unregister_pm_notifier(&clear_peers_on_suspend);
+#endif
 	rcu_barrier_bh();
 }

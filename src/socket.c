@@ -10,6 +10,7 @@
 #include <linux/net.h>
 #include <linux/if_vlan.h>
 #include <linux/if_ether.h>
+#include <linux/inetdevice.h>
 #include <net/udp_tunnel.h>
 #include <net/ipv6.h>
 
@@ -44,10 +45,12 @@ static inline int send4(struct wireguard_device *wg, struct sk_buff *skb, struct
 	if (!rt) {
 		security_sk_classify_flow(sock, flowi4_to_flowi(&fl));
 		rt = ip_route_output_flow(sock_net(sock), &fl, sock);
-		if (unlikely(IS_ERR(rt) && PTR_ERR(rt) == -EINVAL && fl.saddr)) {
+		if (unlikely(endpoint->src4.s_addr && ((IS_ERR(rt) && PTR_ERR(rt) == -EINVAL) || (!IS_ERR(rt) && !inet_confirm_addr(sock_net(sock), __in_dev_get_rcu(rt->dst.dev), 0, fl.saddr, RT_SCOPE_HOST))))) {
 			endpoint->src4.s_addr = fl.saddr = 0;
 			if (cache)
 				dst_cache_reset(cache);
+			if (!IS_ERR(rt))
+				ip_rt_put(rt);
 			rt = ip_route_output_flow(sock_net(sock), &fl, sock);
 		}
 		if (unlikely(IS_ERR(rt))) {
@@ -55,7 +58,7 @@ static inline int send4(struct wireguard_device *wg, struct sk_buff *skb, struct
 			net_dbg_ratelimited("%s: No route to %pISpfsc, error %d\n", netdev_pub(wg)->name, &endpoint->addr, ret);
 			goto err;
 		} else if (unlikely(rt->dst.dev == skb->dev)) {
-			dst_release(&rt->dst);
+			ip_rt_put(rt);
 			ret = -ELOOP;
 			net_dbg_ratelimited("%s: Avoiding routing loop to %pISpfsc\n", netdev_pub(wg)->name, &endpoint->addr);
 			goto err;
@@ -204,12 +207,12 @@ int socket_send_buffer_as_reply_to_skb(struct wireguard_device *wg, struct sk_bu
 int socket_endpoint_from_skb(struct endpoint *endpoint, struct sk_buff *skb)
 {
 	memset(endpoint, 0, sizeof(struct endpoint));
-	if (ip_hdr(skb)->version == 4) {
+	if (skb->protocol == htons(ETH_P_IP)) {
 		endpoint->addr4.sin_family = AF_INET;
 		endpoint->addr4.sin_port = udp_hdr(skb)->source;
 		endpoint->addr4.sin_addr.s_addr = ip_hdr(skb)->saddr;
 		endpoint->src4.s_addr = ip_hdr(skb)->daddr;
-	} else if (ip_hdr(skb)->version == 6) {
+	} else if (skb->protocol == htons(ETH_P_IPV6)) {
 		endpoint->addr6.sin6_family = AF_INET6;
 		endpoint->addr6.sin6_port = udp_hdr(skb)->source;
 		endpoint->addr6.sin6_addr = ipv6_hdr(skb)->saddr;

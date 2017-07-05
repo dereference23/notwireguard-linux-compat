@@ -54,10 +54,9 @@ parse_options() {
 }
 
 read_bool() {
-	local -n out="$1"
 	case "$2" in
-	true) out=1 ;;
-	false) out=0 ;;
+	true) printf -v "$1" 1 ;;
+	false) printf -v "$1" 0 ;;
 	*) die "\`$2' is neither true nor false"
 	esac
 }
@@ -117,7 +116,7 @@ set_mtu() {
 		return
 	fi
 	while read -r _ endpoint; do
-		[[ $endpoint =~ ^([a-z0-9:.]+):[0-9]+$ ]] || continue
+		[[ $endpoint =~ ^\[?([a-z0-9:.]+)\]?:[0-9]+$ ]] || continue
 		output="$(ip route get "${BASH_REMATCH[1]}" || true)"
 		[[ ( $output =~ mtu\ ([0-9]+) || ( $output =~ dev\ ([^ ]+) && $(ip link show dev "${BASH_REMATCH[1]}") =~ mtu\ ([0-9]+) ) ) && ${BASH_REMATCH[1]} -gt $mtu ]] && mtu="${BASH_REMATCH[1]}"
 	done < <(wg show "$INTERFACE" endpoints)
