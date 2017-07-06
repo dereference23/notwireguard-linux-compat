@@ -18,6 +18,11 @@
 #define ISUBUNTU1404
 #endif
 #endif
+#ifdef CONFIG_SUSE_KERNEL
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+#define ISOPENSUSE42
+#endif
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
 #error "WireGuard requires Linux >= 3.10"
@@ -88,7 +93,7 @@ static const struct ipv6_stub_type *ipv6_stub = &ipv6_stub_impl;
 #endif
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0) && IS_ENABLED(CONFIG_IPV6)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0) && IS_ENABLED(CONFIG_IPV6) && !defined(ISOPENSUSE42)
 #include <net/addrconf.h>
 static inline bool ipv6_mod_enabled(void)
 {
@@ -295,10 +300,51 @@ static inline u64 ktime_get_ns(void)
 #define inet_confirm_addr(a,b,c,d,e) inet_confirm_addr(b,c,d,e)
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+#include <linux/vmalloc.h>
+#include <linux/mm.h>
+#include <linux/slab.h>
+static inline void *kvmalloc(size_t size, gfp_t flags)
+{
+	gfp_t kmalloc_flags = flags;
+	void *ret;
+	if (size > PAGE_SIZE) {
+		kmalloc_flags |= __GFP_NOWARN;
+		if (!(kmalloc_flags & __GFP_REPEAT) || (size <= PAGE_SIZE << PAGE_ALLOC_COSTLY_ORDER))
+			kmalloc_flags |= __GFP_NORETRY;
+	}
+	ret = kmalloc(size, kmalloc_flags);
+	if (ret || size <= PAGE_SIZE)
+		return ret;
+	return __vmalloc(size, flags, PAGE_KERNEL);
+}
+static inline void *kvzalloc(size_t size, gfp_t flags)
+{
+	return kvmalloc(size, flags | __GFP_ZERO);
+}
+#endif
+
+#if ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)) || LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 41)) && !defined(ISUBUNTU1404)
+#include <linux/vmalloc.h>
+static inline void kvfree(const void *addr)
+{
+	if (is_vmalloc_addr(addr))
+		vfree(addr);
+	else
+		kfree(addr);
+}
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 9)
+#include <linux/netdevice.h>
+#define priv_destructor destructor
+#endif
+
 /* https://lkml.org/lkml/2017/6/23/790 */
 #if IS_ENABLED(CONFIG_NF_CONNTRACK)
 #include <linux/ip.h>
 #include <linux/icmpv6.h>
+#include <net/ipv6.h>
 #include <net/icmp.h>
 #include <net/netfilter/nf_conntrack.h>
 #include <net/netfilter/nf_nat_core.h>

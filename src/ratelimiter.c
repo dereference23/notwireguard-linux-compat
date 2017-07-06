@@ -2,9 +2,8 @@
 
 #include "ratelimiter.h"
 #include <linux/siphash.h>
-#include <linux/vmalloc.h>
+#include <linux/mm.h>
 #include <linux/slab.h>
-#include <linux/hashtable.h>
 #include <net/ip.h>
 
 static struct kmem_cache *entry_cache;
@@ -22,8 +21,8 @@ static struct hlist_head *table_v6;
 
 struct entry {
 	u64 last_time_ns, tokens;
+	__be64 ip;
 	void *net;
-	__be32 ip[3];
 	spinlock_t lock;
 	struct hlist_node hash;
 	struct rcu_head rcu;
@@ -80,23 +79,23 @@ bool ratelimiter_allow(struct sk_buff *skb, struct net *net)
 {
 	struct entry *entry;
 	struct hlist_head *bucket;
-	struct { u32 net; __be32 ip[3]; } data = { .net = (unsigned long)net & 0xffffffff };
+	struct { __be64 ip; u32 net; } data = { .net = (unsigned long)net & 0xffffffff };
 
 	if (skb->protocol == htons(ETH_P_IP)) {
-		data.ip[0] = ip_hdr(skb)->saddr;
-		bucket = &table_v4[hsiphash(&data, sizeof(u32) * 2, &key) & (table_size - 1)];
+		data.ip = (__force __be64)ip_hdr(skb)->saddr;
+		bucket = &table_v4[hsiphash(&data, sizeof(u32) * 3, &key) & (table_size - 1)];
 	}
 #if IS_ENABLED(CONFIG_IPV6)
 	else if (skb->protocol == htons(ETH_P_IPV6)) {
-		memcpy(data.ip, &ipv6_hdr(skb)->saddr, sizeof(u32) * 3); /* Only 96 bits */
-		bucket = &table_v6[hsiphash(&data, sizeof(u32) * 4, &key) & (table_size - 1)];
+		memcpy(&data.ip, &ipv6_hdr(skb)->saddr, sizeof(__be64)); /* Only 64 bits */
+		bucket = &table_v6[hsiphash(&data, sizeof(u32) * 3, &key) & (table_size - 1)];
 	}
 #endif
 	else
 		return false;
 	rcu_read_lock();
 	hlist_for_each_entry_rcu (entry, bucket, hash) {
-		if (entry->net == net && !memcmp(entry->ip, data.ip, sizeof(data.ip))) {
+		if (entry->net == net && entry->ip == data.ip) {
 			u64 now, tokens;
 			bool ret;
 			/* Inspired by nft_limit.c, but this is actually a slightly different
@@ -123,7 +122,7 @@ bool ratelimiter_allow(struct sk_buff *skb, struct net *net)
 		goto err_oom;
 
 	entry->net = net;
-	memcpy(entry->ip, data.ip, sizeof(data.ip));
+	entry->ip = data.ip;
 	INIT_HLIST_NODE(&entry->hash);
 	spin_lock_init(&entry->lock);
 	entry->last_time_ns = ktime_get_ns();
@@ -154,18 +153,16 @@ int ratelimiter_init(void)
 	table_size = (totalram_pages > (1 << 30) / PAGE_SIZE) ? 8192 : max_t(unsigned long, 16, roundup_pow_of_two((totalram_pages << PAGE_SHIFT) / (1 << 14) / sizeof(struct hlist_head)));
 	max_entries = table_size * 8;
 
-	table_v4 = vmalloc(table_size * sizeof(struct hlist_head));
+	table_v4 = kvzalloc(table_size * sizeof(struct hlist_head), GFP_KERNEL);
 	if (!table_v4)
 		goto err_kmemcache;
-	__hash_init(table_v4, table_size);
 
 #if IS_ENABLED(CONFIG_IPV6)
-	table_v6 = vmalloc(table_size * sizeof(struct hlist_head));
+	table_v6 = kvzalloc(table_size * sizeof(struct hlist_head), GFP_KERNEL);
 	if (!table_v6) {
-		vfree(table_v4);
+		kvfree(table_v4);
 		goto err_kmemcache;
 	}
-	__hash_init(table_v6, table_size);
 #endif
 
 	queue_delayed_work(system_power_efficient_wq, &gc_work, HZ);
@@ -187,9 +184,11 @@ void ratelimiter_uninit(void)
 	cancel_delayed_work_sync(&gc_work);
 	gc_entries(NULL);
 	synchronize_rcu();
-	vfree(table_v4);
+	kvfree(table_v4);
 #if IS_ENABLED(CONFIG_IPV6)
-	vfree(table_v6);
+	kvfree(table_v6);
 #endif
 	kmem_cache_destroy(entry_cache);
 }
+
+#include "selftest/ratelimiter.h"
