@@ -35,10 +35,10 @@ static struct kmem_cache *decryption_ctx_cache __read_mostly;
 
 int __init packet_init_data_caches(void)
 {
-	encryption_ctx_cache = kmem_cache_create("wireguard_encryption_ctx", sizeof(struct encryption_ctx), 0, 0, NULL);
+	encryption_ctx_cache = KMEM_CACHE(encryption_ctx, 0);
 	if (!encryption_ctx_cache)
 		return -ENOMEM;
-	decryption_ctx_cache = kmem_cache_create("wireguard_decryption_ctx", sizeof(struct decryption_ctx), 0, 0, NULL);
+	decryption_ctx_cache = KMEM_CACHE(decryption_ctx, 0);
 	if (!decryption_ctx_cache) {
 		kmem_cache_destroy(encryption_ctx_cache);
 		return -ENOMEM;
@@ -275,9 +275,9 @@ int packet_create_data(struct sk_buff_head *queue, struct wireguard_peer *peer)
 
 	rcu_read_lock_bh();
 	keypair = noise_keypair_get(rcu_dereference_bh(peer->keypairs.current_keypair));
-	if (unlikely(!keypair))
-		goto err_rcu;
 	rcu_read_unlock_bh();
+	if (unlikely(!keypair))
+		return ret;
 
 	skb_queue_walk (queue, skb) {
 		if (unlikely(!get_encryption_nonce(&PACKET_CB(skb)->nonce, &keypair->sending)))
@@ -328,9 +328,6 @@ serial_encrypt:
 err:
 	noise_keypair_put(keypair);
 	return ret;
-err_rcu:
-	rcu_read_unlock_bh();
-	return ret;
 }
 
 static void begin_decrypt_packet(struct decryption_ctx *ctx)
@@ -351,7 +348,7 @@ static void finish_decrypt_packet(struct decryption_ctx *ctx)
 		return;
 
 	if (unlikely(!counter_validate(&ctx->keypair->receiving.counter, PACKET_CB(ctx->skb)->nonce))) {
-		net_dbg_ratelimited("%s: Packet has invalid nonce %Lu (max %Lu)\n", netdev_pub(ctx->keypair->entry.peer->device)->name, PACKET_CB(ctx->skb)->nonce, ctx->keypair->receiving.counter.receive.counter);
+		net_dbg_ratelimited("%s: Packet has invalid nonce %Lu (max %Lu)\n", ctx->keypair->entry.peer->device->dev->name, PACKET_CB(ctx->skb)->nonce, ctx->keypair->receiving.counter.receive.counter);
 		peer_put(ctx->keypair->entry.peer);
 		noise_keypair_put(ctx->keypair);
 		dev_kfree_skb(ctx->skb);

@@ -14,6 +14,7 @@ WG_CONFIG=""
 INTERFACE=""
 ADDRESSES=( )
 MTU=""
+DNS=( )
 PRE_UP=""
 POST_UP=""
 PRE_DOWN=""
@@ -41,6 +42,7 @@ parse_options() {
 			case "$key" in
 			Address) ADDRESSES+=( ${value//,/ } ); continue ;;
 			MTU) MTU="$value"; continue ;;
+			DNS) DNS+=( ${value//,/ } ); continue ;;
 			PreUp) PRE_UP="$value"; continue ;;
 			PreDown) PRE_DOWN="$value"; continue ;;
 			PostUp) POST_UP="$value"; continue ;;
@@ -128,6 +130,14 @@ set_mtu() {
 	cmd ip link set mtu $(( mtu - 80 )) dev "$INTERFACE"
 }
 
+set_dns() {
+	[[ ${#DNS[@]} -eq 0 ]] || printf 'nameserver %s\n' "${DNS[@]}" | cmd resolvconf -a "tun.$INTERFACE" -m 0 -x
+}
+
+unset_dns() {
+	[[ ${#DNS[@]} -eq 0 ]] || cmd resolvconf -d "tun.$INTERFACE"
+}
+
 add_route() {
 	if [[ $1 == 0.0.0.0/0 || $1 =~ ^[0:]+/0$ ]]; then
 		add_default "$1"
@@ -144,18 +154,10 @@ add_default() {
 			((DEFAULT_TABLE++))
 		done
 	fi
-	local proto=-4 src ip
-	if [[ $1 == *:* ]]; then
-		proto=-6
-		for ip in "${ADDRESSES[@]}"; do
-			if [[ $ip == *:* ]]; then
-				src="src ${ip%/*}"
-				break
-			fi
-		done
-	fi
+	local proto=-4
+	[[ $1 == *:* ]] && proto=-6
 	cmd wg set "$INTERFACE" fwmark $DEFAULT_TABLE
-	cmd ip $proto route add "$1" $src dev "$INTERFACE" table $DEFAULT_TABLE
+	cmd ip $proto route add "$1" dev "$INTERFACE" table $DEFAULT_TABLE
 	cmd ip $proto rule add not fwmark $DEFAULT_TABLE table $DEFAULT_TABLE
 	cmd ip $proto rule add table main suppress_prefixlength 0
 	local key value
@@ -176,6 +178,9 @@ save_config() {
 	for address in ${BASH_REMATCH[1]}; do
 		new_config+="Address = $address"$'\n'
 	done
+	while read -r address; do
+		[[ $address =~ ^nameserver\ ([a-zA-Z0-9_=+:%.-]+)$ ]] && new_config+="DNS = ${BASH_REMATCH[1]}"$'\n'
+	done < <(resolvconf -l "tun.$INTERFACE" 2>/dev/null)
 	[[ -n $MTU && $(ip link show dev "$INTERFACE") =~ mtu\ ([0-9]+) ]] && new_config+="MTU = ${BASH_REMATCH[1]}"$'\n'
 	[[ $SAVE_CONFIG -eq 0 ]] || new_config+=$'SaveConfig = true\n'
 	[[ -z $PRE_UP ]] || new_config+="PreUp = $PRE_UP"$'\n'
@@ -211,13 +216,15 @@ cmd_usage() {
 
 	  - Address: may be specified one or more times and contains one or more
 	    IP addresses (with an optional CIDR mask) to be set for the interface.
+	  - DNS: an optional DNS server to use while the device is up.
+	  - MTU: an optional MTU for the interface; if unspecified, auto-calculated.
 	  - PreUp, PostUp, PreDown, PostDown: script snippets which will be executed
 	    by bash(1) at the corresponding phases of the link, most commonly used
 	    to configure DNS. The string \`%i' is expanded to INTERFACE.
 	  - SaveConfig: if set to \`true', the configuration is saved from the current
 	    state of the interface upon shutdown.
 
-	 See wg-quick(8) for more info and examples.
+	See wg-quick(8) for more info and examples.
 	_EOF
 }
 
@@ -233,7 +240,8 @@ cmd_up() {
 	done
 	set_mtu
 	up_if
-	for i in $(wg show "$INTERFACE" allowed-ips | grep -Po '(?<=[\t ])[0-9.:/a-f]+' | sort -nr -k 2 -t /); do
+	set_dns
+	for i in $(while read -r _ i; do for i in $i; do [[ $i =~ ^[0-9a-z:.]+/[0-9]+$ ]] && echo "$i"; done; done < <(wg show "$INTERFACE" allowed-ips) | sort -nr -k 2 -t /); do
 		[[ $(ip route get "$i" 2>/dev/null) == *dev\ $INTERFACE\ * ]] || add_route "$i"
 	done
 	execute_hook "$POST_UP"
@@ -244,6 +252,7 @@ cmd_down() {
 	[[ -n $(ip link show dev "$INTERFACE" type wireguard 2>/dev/null) ]] || die "\`$INTERFACE' is not a WireGuard interface"
 	execute_hook "$PRE_DOWN"
 	[[ $SAVE_CONFIG -eq 0 ]] || save_config
+	unset_dns
 	del_if
 	execute_hook "$POST_DOWN"
 }

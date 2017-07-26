@@ -1,7 +1,7 @@
 PWD := $(shell pwd)
 
 # Set these from the environment to override
-KERNEL_VERSION ?= 4.9.20
+KERNEL_VERSION ?= 4.11.9
 BUILD_PATH ?= $(PWD)/../../../qemu-build
 DISTFILES_PATH ?= $(PWD)/distfiles
 DEBUG_KERNEL ?= no
@@ -10,7 +10,7 @@ NR_CPUS ?= 2
 
 DOWNLOAD := wget -O
 # DOWNLOAD := curl -f -o
-MIRROR := https://download.wireguard.io/qemu-test/distfiles/
+MIRROR := https://download.wireguard.com/qemu-test/distfiles/
 
 CHOST := $(shell gcc -dumpmachine)
 ARCH := $(shell uname -m)

@@ -27,7 +27,7 @@ static void packet_send_handshake_initiation(struct wireguard_peer *peer)
 	peer->last_sent_handshake = get_jiffies_64();
 	up_write(&peer->handshake.lock);
 
-	net_dbg_ratelimited("%s: Sending handshake initiation to peer %Lu (%pISpfsc)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
+	net_dbg_ratelimited("%s: Sending handshake initiation to peer %Lu (%pISpfsc)\n", peer->device->dev->name, peer->internal_id, &peer->endpoint.addr);
 
 	if (noise_handshake_create_initiation(&packet, &peer->handshake)) {
 		cookie_add_mac_to_packet(&packet, sizeof(packet), peer);
@@ -67,7 +67,7 @@ void packet_send_handshake_response(struct wireguard_peer *peer)
 {
 	struct message_handshake_response packet;
 
-	net_dbg_ratelimited("%s: Sending handshake response to peer %Lu (%pISpfsc)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
+	net_dbg_ratelimited("%s: Sending handshake response to peer %Lu (%pISpfsc)\n", peer->device->dev->name, peer->internal_id, &peer->endpoint.addr);
 	peer->last_sent_handshake = get_jiffies_64();
 
 	if (noise_handshake_create_response(&packet, &peer->handshake)) {
@@ -84,7 +84,7 @@ void packet_send_handshake_cookie(struct wireguard_device *wg, struct sk_buff *i
 {
 	struct message_handshake_cookie packet;
 
-	net_dbg_skb_ratelimited("%s: Sending cookie response for denied handshake message for %pISpfsc\n", netdev_pub(wg)->name, initiating_skb);
+	net_dbg_skb_ratelimited("%s: Sending cookie response for denied handshake message for %pISpfsc\n", wg->dev->name, initiating_skb);
 	cookie_message_create(&packet, initiating_skb, sender_index, &wg->cookie_checker);
 	socket_send_buffer_as_reply_to_skb(wg, initiating_skb, &packet, sizeof(packet));
 }
@@ -109,14 +109,14 @@ static inline void keep_key_fresh(struct wireguard_peer *peer)
 void packet_send_keepalive(struct wireguard_peer *peer)
 {
 	struct sk_buff *skb;
-	if (!skb_queue_len(&peer->tx_packet_queue)) {
+	if (skb_queue_empty(&peer->tx_packet_queue)) {
 		skb = alloc_skb(DATA_PACKET_HEAD_ROOM + MESSAGE_MINIMUM_LENGTH, GFP_ATOMIC);
 		if (unlikely(!skb))
 			return;
 		skb_reserve(skb, DATA_PACKET_HEAD_ROOM);
-		skb->dev = netdev_pub(peer->device);
+		skb->dev = peer->device->dev;
 		skb_queue_tail(&peer->tx_packet_queue, skb);
-		net_dbg_ratelimited("%s: Sending keepalive packet to peer %Lu (%pISpfsc)\n", netdev_pub(peer->device)->name, peer->internal_id, &peer->endpoint.addr);
+		net_dbg_ratelimited("%s: Sending keepalive packet to peer %Lu (%pISpfsc)\n", peer->device->dev->name, peer->internal_id, &peer->endpoint.addr);
 	}
 	packet_send_queue(peer);
 }
@@ -126,7 +126,7 @@ void packet_create_data_done(struct sk_buff_head *queue, struct wireguard_peer *
 	struct sk_buff *skb, *tmp;
 	bool is_keepalive, data_sent = false;
 
-	if (unlikely(!skb_queue_len(queue)))
+	if (unlikely(skb_queue_empty(queue)))
 		return;
 
 	timers_any_authenticated_packet_traversal(peer);
@@ -147,6 +147,7 @@ void packet_create_data_done(struct sk_buff_head *queue, struct wireguard_peer *
 void packet_send_queue(struct wireguard_peer *peer)
 {
 	struct sk_buff_head queue;
+	struct sk_buff *skb;
 
 	peer->need_resend_queue = false;
 
@@ -156,7 +157,7 @@ void packet_send_queue(struct wireguard_peer *peer)
 	skb_queue_splice_init(&peer->tx_packet_queue, &queue);
 	spin_unlock_bh(&peer->tx_packet_queue.lock);
 
-	if (unlikely(!skb_queue_len(&queue)))
+	if (unlikely(skb_queue_empty(&queue)))
 		return;
 
 	/* We submit it for encryption and sending. */
@@ -180,7 +181,12 @@ void packet_send_queue(struct wireguard_peer *peer)
 		break;
 	case -ENOKEY:
 		/* ENOKEY means that we don't have a valid session for the peer, which
-		 * means we should initiate a session, but after requeuing like above. */
+		 * means we should initiate a session, but after requeuing like above.
+		 * Since we'll be queuing these up for potentially a little while, we
+		 * first make sure they're no longer using up a socket's write buffer. */
+
+		skb_queue_walk (&queue, skb)
+			skb_orphan(skb);
 
 		spin_lock_bh(&peer->tx_packet_queue.lock);
 		skb_queue_splice(&queue, &peer->tx_packet_queue);

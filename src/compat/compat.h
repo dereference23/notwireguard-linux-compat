@@ -326,18 +326,24 @@ static inline void *kvzalloc(size_t size, gfp_t flags)
 
 #if ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)) || LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 41)) && !defined(ISUBUNTU1404)
 #include <linux/vmalloc.h>
-static inline void kvfree(const void *addr)
+#include <linux/mm.h>
+static inline void kvfree_ours(const void *addr)
 {
 	if (is_vmalloc_addr(addr))
 		vfree(addr);
 	else
 		kfree(addr);
 }
+#define kvfree kvfree_ours
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 9)
 #include <linux/netdevice.h>
 #define priv_destructor destructor
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+#define newlink(a,b,c,d,e) newlink(a,b,c,d)
 #endif
 
 /* https://lkml.org/lkml/2017/6/23/790 */
@@ -371,13 +377,6 @@ static inline void new_icmpv6_send(struct sk_buff *skb, u8 type, u8 code, __u32 
 #define icmp_send(a,b,c,d) new_icmp_send(a,b,c,d)
 #define icmpv6_send(a,b,c,d) new_icmpv6_send(a,b,c,d)
 #endif
-
-/* https://lkml.org/lkml/2015/6/12/415 */
-#include <linux/netdevice.h>
-static inline struct net_device *netdev_pub(void *dev)
-{
-	return (struct net_device *)((char *)dev - ALIGN(sizeof(struct net_device), NETDEV_ALIGN));
-}
 
 /* PaX compatibility */
 #ifdef CONSTIFY_PLUGIN
