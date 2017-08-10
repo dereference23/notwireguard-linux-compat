@@ -1,3 +1,11 @@
+wireguard (0.0.20170810-1) unstable; urgency=medium
+
+  * New upstream release
+  * Standards-Version: bumped to 4.0.1 (Priority: extra -> optional)
+  * added autopkgtest to wireguard demo server
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 10 Aug 2017 20:48:34 -0400
+
 wireguard (0.0.20170726-1) unstable; urgency=medium
 
   * New upstream release
