@@ -138,9 +138,16 @@ static inline void netif_keep_dst(struct net_device *dev)
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0) && !defined(ISRHEL7)
+#include <linux/netdevice.h>
+#ifndef netdev_alloc_pcpu_stats
 #define pcpu_sw_netstats pcpu_tstats
+#endif
+#ifndef netdev_alloc_pcpu_stats
 #define netdev_alloc_pcpu_stats alloc_percpu
+#endif
 #elif LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0) && !defined(ISRHEL7)
+#include <linux/netdevice.h>
+#ifndef netdev_alloc_pcpu_stats
 #define netdev_alloc_pcpu_stats(type)					\
 ({									\
 	typeof(type) __percpu *pcpu_stats = alloc_percpu(type);		\
@@ -154,6 +161,7 @@ static inline void netif_keep_dst(struct net_device *dev)
 	}								\
 	pcpu_stats;							\
 })
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 0)
@@ -304,7 +312,7 @@ static inline u64 ktime_get_ns(void)
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
 #include <linux/slab.h>
-static inline void *kvmalloc(size_t size, gfp_t flags)
+static inline void *kvmalloc_ours(size_t size, gfp_t flags)
 {
 	gfp_t kmalloc_flags = flags;
 	void *ret;
@@ -318,10 +326,12 @@ static inline void *kvmalloc(size_t size, gfp_t flags)
 		return ret;
 	return __vmalloc(size, flags, PAGE_KERNEL);
 }
-static inline void *kvzalloc(size_t size, gfp_t flags)
+static inline void *kvzalloc_ours(size_t size, gfp_t flags)
 {
-	return kvmalloc(size, flags | __GFP_ZERO);
+	return kvmalloc_ours(size, flags | __GFP_ZERO);
 }
+#define kvmalloc kvmalloc_ours
+#define kvzalloc kvzalloc_ours
 #endif
 
 #if ((LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)) || LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 41)) && !defined(ISUBUNTU1404)
@@ -383,16 +393,6 @@ static inline void new_icmpv6_send(struct sk_buff *skb, u8 type, u8 code, __u32 
 #include <linux/cache.h>
 #undef __read_mostly
 #define __read_mostly
-#endif
-
-#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
-#define net_dbg_skb_ratelimited(fmt, dev, skb, ...) do { \
-	struct endpoint __endpoint; \
-	socket_endpoint_from_skb(&__endpoint, skb); \
-	net_dbg_ratelimited(fmt, dev, &__endpoint.addr, ##__VA_ARGS__); \
-} while(0)
-#else
-#define net_dbg_skb_ratelimited(fmt, skb, ...)
 #endif
 
 #endif
