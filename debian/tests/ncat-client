@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -e
+
+goodstring="Congrats! You've successfully configured WireGuard"
+
+printf "Verifying that the existing network does not already use 192.168.4.1 ...\n"
+
+if wget -q --tries=2 --timeout=5 -O "${AUTOPKGTEST_ARTIFACTS}/index.html" http://192.168.4.1 ; then
+    printf "Succeeded in fetching data before loading wireguard!\nNetwork config:\n"
+    ip a
+    ip r
+    printf "Should not have happened, terminating with a failure.\n"
+    exit 4
+fi
+
+printf "Loading wireguard configuration to demo server...\n"
+/usr/share/doc/wireguard-tools/examples/ncat-client-server/client.sh
+
+printf "Retrieving demo/sample webpage...\n"
+wget -q --tries=2 --timeout=5 -O "${AUTOPKGTEST_ARTIFACTS}/index.html" http://192.168.4.1
+
+printf "Checking content of retreived webpage...\n"
+grep -F "$goodstring" "${AUTOPKGTEST_ARTIFACTS}/index.html"

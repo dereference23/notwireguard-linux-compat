@@ -1,0 +1,3 @@
+Tests: ncat-client
+Restrictions: needs-root, isolation-machine
+Depends: @, wget
