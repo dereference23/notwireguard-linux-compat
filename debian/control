@@ -1,6 +1,6 @@
 Source: wireguard
 Section: net
-Priority: extra
+Priority: optional
 Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends:
  debhelper (>= 10~),
@@ -8,7 +8,7 @@ Build-Depends:
  libmnl-dev,
  pkg-config,
  systemd
-Standards-Version: 4.0.0
+Standards-Version: 4.0.1
 Homepage: https://www.wireguard.com
 Vcs-Git: https://anonscm.debian.org/git/collab-maint/wireguard.git
 Vcs-Browser: https://anonscm.debian.org/git/collab-maint/wireguard.git
