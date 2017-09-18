@@ -1,6 +1,3 @@
-# This example script gets run inside an android addon sdcard
-# so its paths are not debian paths.
-wireguard-tools: example-wrong-path-for-interpreter usr/share/doc/wireguard-tools/examples/android/addonsd.sh (#!/sbin/sh != /bin/sh)
 # This example project directory indicates which files are generated files by
 # including a .gitignore file:
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/extract-keys/.gitignore
