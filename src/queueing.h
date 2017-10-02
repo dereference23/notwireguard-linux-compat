@@ -17,8 +17,8 @@ struct sk_buff;
 
 /* queueing.c APIs: */
 extern struct kmem_cache *crypt_ctx_cache __read_mostly;
-int init_crypt_ctx_cache(void);
-void deinit_crypt_ctx_cache(void);
+int crypt_ctx_cache_init(void);
+void crypt_ctx_cache_uninit(void);
 int packet_queue_init(struct crypt_queue *queue, work_func_t function, bool multicore);
 struct multicore_worker __percpu *packet_alloc_percpu_multicore_worker(work_func_t function, void *ptr);
 
@@ -52,10 +52,10 @@ struct crypt_ctx {
 		struct sk_buff_head packets;
 		struct sk_buff *skb;
 	};
+	atomic_t is_finished;
 	struct wireguard_peer *peer;
 	struct noise_keypair *keypair;
 	struct endpoint endpoint;
-	atomic_t is_finished;
 };
 
 /* Returns either the correct skb->protocol value, or 0 if invalid. */
@@ -100,7 +100,7 @@ static inline void skb_reset(struct sk_buff *skb)
 	skb_reset_inner_headers(skb);
 }
 
-static inline int choose_cpu(int *stored_cpu, unsigned int id)
+static inline int cpumask_choose_online(int *stored_cpu, unsigned int id)
 {
 	unsigned int cpu = *stored_cpu, cpu_index, i;
 	if (unlikely(cpu == nr_cpumask_bits || !cpumask_test_cpu(cpu, cpu_online_mask))) {
@@ -156,12 +156,6 @@ static inline bool queue_enqueue(struct crypt_queue *queue, struct list_head *no
 	return true;
 }
 
-static inline struct crypt_ctx *queue_dequeue_per_peer(struct crypt_queue *queue)
-{
-	struct list_head *node = queue_dequeue(queue);
-	return node ? list_entry(node, struct crypt_ctx, per_peer_node) : NULL;
-}
-
 static inline struct crypt_ctx *queue_dequeue_per_device(struct crypt_queue *queue)
 {
 	struct list_head *node = queue_dequeue(queue);
@@ -173,15 +167,10 @@ static inline struct crypt_ctx *queue_first_per_peer(struct crypt_queue *queue)
 	return list_first_entry_or_null(&queue->queue, struct crypt_ctx, per_peer_node);
 }
 
-static inline bool queue_enqueue_per_peer(struct crypt_queue *peer_queue, struct crypt_ctx *ctx)
-{
-	return queue_enqueue(peer_queue, &ctx->per_peer_node, MAX_QUEUED_PACKETS);
-}
-
 static inline bool queue_enqueue_per_device_and_peer(struct crypt_queue *device_queue, struct crypt_queue *peer_queue, struct crypt_ctx *ctx, struct workqueue_struct *wq, int *next_cpu)
 {
 	int cpu;
-	if (unlikely(!queue_enqueue_per_peer(peer_queue, ctx)))
+	if (unlikely(!queue_enqueue(peer_queue, &ctx->per_peer_node, MAX_QUEUED_PACKETS)))
 		return false;
 	cpu = cpumask_next_online(next_cpu);
 	queue_enqueue(device_queue, &ctx->per_device_node, 0);

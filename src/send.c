@@ -218,7 +218,7 @@ void packet_encrypt_worker(struct work_struct *work)
 		 * we grab an additional reference to peer. */
 		peer = peer_rcu_get(ctx->peer);
 		atomic_set(&ctx->is_finished, true);
-		queue_work_on(choose_cpu(&peer->serial_work_cpu, peer->internal_id), peer->device->packet_crypt_wq, &peer->tx_queue.work);
+		queue_work_on(cpumask_choose_online(&peer->serial_work_cpu, peer->internal_id), peer->device->packet_crypt_wq, &peer->tx_queue.work);
 		peer_put(peer);
 	}
 	chacha20poly1305_deinit_simd(have_simd);
@@ -229,12 +229,13 @@ static void packet_create_data(struct wireguard_peer *peer, struct sk_buff_head 
 	struct crypt_ctx *ctx;
 	struct wireguard_device *wg = peer->device;
 
-	ctx = kmem_cache_zalloc(crypt_ctx_cache, GFP_ATOMIC);
+	ctx = kmem_cache_alloc(crypt_ctx_cache, GFP_ATOMIC);
 	if (unlikely(!ctx)) {
-		skb_queue_purge(packets);
+		__skb_queue_purge(packets);
 		goto err_drop_refs;
 	}
 	/* This function consumes the passed references to peer and keypair. */
+	atomic_set(&ctx->is_finished, false);
 	ctx->keypair = keypair;
 	ctx->peer = peer;
 	__skb_queue_head_init(&ctx->packets);
@@ -242,7 +243,7 @@ static void packet_create_data(struct wireguard_peer *peer, struct sk_buff_head 
 	if (likely(queue_enqueue_per_device_and_peer(&wg->encrypt_queue, &peer->tx_queue, ctx, wg->packet_crypt_wq, &wg->encrypt_queue.last_cpu)))
 		return; /* Successful. No need to fall through to drop references below. */
 
-	skb_queue_purge(&ctx->packets);
+	__skb_queue_purge(&ctx->packets);
 	kmem_cache_free(crypt_ctx_cache, ctx);
 
 err_drop_refs:
@@ -287,7 +288,7 @@ void packet_send_staged_packets(struct wireguard_peer *peer)
 			goto out_invalid;
 	}
 
-	/* We pass off our peer and keypair references too the data subsystem and return. */
+	/* We pass off our peer and keypair references to the data subsystem and return. */
 	packet_create_data(peer_rcu_get(peer), &packets, keypair);
 	return;
 

@@ -25,6 +25,7 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 	peer = kzalloc(sizeof(struct wireguard_peer), GFP_KERNEL);
 	if (!peer)
 		return NULL;
+	peer->device = wg;
 
 	if (dst_cache_init(&peer->endpoint_cache, GFP_KERNEL)) {
 		kfree(peer);
@@ -33,22 +34,22 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 
 	peer->internal_id = atomic64_inc_return(&peer_counter);
 	peer->serial_work_cpu = nr_cpumask_bits;
-	peer->device = wg;
 	cookie_init(&peer->latest_cookie);
 	if (!noise_handshake_init(&peer->handshake, &wg->static_identity, public_key, preshared_key, peer)) {
 		kfree(peer);
 		return NULL;
 	}
+	timers_init(peer);
 	cookie_checker_precompute_peer_keys(peer);
-	mutex_init(&peer->keypairs.keypair_update_lock);
+	spin_lock_init(&peer->keypairs.keypair_update_lock);
 	INIT_WORK(&peer->transmit_handshake_work, packet_handshake_send_worker);
 	rwlock_init(&peer->endpoint_lock);
 	kref_init(&peer->refcount);
-	pubkey_hashtable_add(&wg->peer_hashtable, peer);
-	list_add_tail(&peer->peer_list, &wg->peer_list);
 	packet_queue_init(&peer->tx_queue, packet_tx_worker, false);
 	packet_queue_init(&peer->rx_queue, packet_rx_worker, false);
 	skb_queue_head_init(&peer->staged_packet_queue);
+	list_add_tail(&peer->peer_list, &wg->peer_list);
+	pubkey_hashtable_add(&wg->peer_hashtable, peer);
 	pr_debug("%s: Peer %Lu created\n", wg->dev->name, peer->internal_id);
 	return peer;
 }
@@ -77,13 +78,13 @@ void peer_remove(struct wireguard_peer *peer)
 	if (unlikely(!peer))
 		return;
 	lockdep_assert_held(&peer->device->device_update_lock);
-	noise_handshake_clear(&peer->handshake);
-	noise_keypairs_clear(&peer->keypairs);
-	list_del(&peer->peer_list);
-	timers_uninit_peer(peer);
 	routing_table_remove_by_peer(&peer->device->peer_routing_table, peer);
 	pubkey_hashtable_remove(&peer->device->peer_hashtable, peer);
 	skb_queue_purge(&peer->staged_packet_queue);
+	noise_handshake_clear(&peer->handshake);
+	noise_keypairs_clear(&peer->keypairs);
+	list_del_init(&peer->peer_list);
+	timers_stop(peer);
 	flush_workqueue(peer->device->packet_crypt_wq); /* The first flush is for encrypt/decrypt step. */
 	flush_workqueue(peer->device->packet_crypt_wq); /* The second flush is for send/receive step. */
 	flush_workqueue(peer->device->handshake_send_wq);
@@ -94,7 +95,6 @@ static void rcu_release(struct rcu_head *rcu)
 {
 	struct wireguard_peer *peer = container_of(rcu, struct wireguard_peer, rcu);
 	pr_debug("%s: Peer %Lu (%pISpfsc) destroyed\n", peer->device->dev->name, peer->internal_id, &peer->endpoint.addr);
-	skb_queue_purge(&peer->staged_packet_queue);
 	dst_cache_destroy(&peer->endpoint_cache);
 	kzfree(peer);
 }
@@ -102,6 +102,8 @@ static void rcu_release(struct rcu_head *rcu)
 static void kref_release(struct kref *refcount)
 {
 	struct wireguard_peer *peer = container_of(refcount, struct wireguard_peer, refcount);
+	index_hashtable_remove(&peer->device->index_hashtable, &peer->handshake.entry);
+	skb_queue_purge(&peer->staged_packet_queue);
 	call_rcu_bh(&peer->rcu, rcu_release);
 }
 

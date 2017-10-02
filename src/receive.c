@@ -242,7 +242,7 @@ out:
 }
 #include "selftest/counter.h"
 
-void packet_consume_data_done(struct sk_buff *skb, struct wireguard_peer *peer, struct endpoint *endpoint, bool used_new_key)
+static void packet_consume_data_done(struct sk_buff *skb, struct wireguard_peer *peer, struct endpoint *endpoint, bool used_new_key)
 {
 	struct net_device *dev = peer->device->dev;
 	struct wireguard_peer *routed_peer;
@@ -277,7 +277,6 @@ void packet_consume_data_done(struct sk_buff *skb, struct wireguard_peer *peer, 
 			goto dishonest_packet_size;
 		if (INET_ECN_is_ce(PACKET_CB(skb)->ds))
 			IP_ECN_set_ce(ip_hdr(skb));
-
 	} else if (skb->protocol == htons(ETH_P_IPV6)) {
 		len = ntohs(ipv6_hdr(skb)->payload_len) + sizeof(struct ipv6hdr);
 		if (INET_ECN_is_ce(PACKET_CB(skb)->ds))
@@ -299,12 +298,11 @@ void packet_consume_data_done(struct sk_buff *skb, struct wireguard_peer *peer, 
 		goto dishonest_packet_peer;
 
 	len = skb->len;
-	if (likely(netif_rx(skb) == NET_RX_SUCCESS))
-		rx_stats(peer, len);
-	else {
+	if (unlikely(netif_receive_skb(skb) == NET_RX_DROP)) {
 		++dev->stats.rx_dropped;
 		net_dbg_ratelimited("%s: Failed to give packet to userspace from peer %Lu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
-	}
+	} else
+		rx_stats(peer, len);
 	goto continue_processing;
 
 dishonest_packet_peer:
@@ -370,7 +368,7 @@ void packet_decrypt_worker(struct work_struct *work)
 		 * we take a reference here first. */
 		peer = peer_rcu_get(ctx->peer);
 		atomic_set(&ctx->is_finished, true);
-		queue_work_on(choose_cpu(&peer->serial_work_cpu, peer->internal_id), peer->device->packet_crypt_wq, &peer->rx_queue.work);
+		queue_work_on(cpumask_choose_online(&peer->serial_work_cpu, peer->internal_id), peer->device->packet_crypt_wq, &peer->rx_queue.work);
 		peer_put(peer);
 	}
 }
@@ -389,13 +387,14 @@ static void packet_consume_data(struct wireguard_device *wg, struct sk_buff *skb
 		return;
 	}
 
-	ctx = kmem_cache_zalloc(crypt_ctx_cache, GFP_ATOMIC);
+	ctx = kmem_cache_alloc(crypt_ctx_cache, GFP_ATOMIC);
 	if (unlikely(!ctx)) {
 		dev_kfree_skb(skb);
 		peer_put(ctx->keypair->entry.peer);
 		noise_keypair_put(keypair);
 		return;
 	}
+	atomic_set(&ctx->is_finished, false);
 	ctx->keypair = keypair;
 	ctx->skb = skb;
 	/* We already have a reference to peer from index_hashtable_lookup. */
