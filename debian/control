@@ -15,6 +15,7 @@ Vcs-Browser: https://anonscm.debian.org/git/collab-maint/wireguard.git
 
 Package: wireguard-dkms
 Architecture: all
+Section: kernel
 Depends:
  ${misc:Depends}
 Recommends:
