@@ -1,7 +1,11 @@
 wireguard (0.0.20171001+dfsg1-1) unstable; urgency=medium
 
   * New upstream release
+   - use dfsg-free version of upstream release, dropping accidentally
+     shipped contrib/examples/sticky-sockets/a.out
+   - subsequent releases should not need dfsg-free cleanup
   * Standards-Version: bump to 4.1.1 (no changes needed)
+  * move wireguard-dkms to Section: kernel (thanks, Lintian!)
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 02 Oct 2017 10:08:23 -0700
 
