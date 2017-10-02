@@ -8,7 +8,7 @@ Build-Depends:
  libmnl-dev,
  pkg-config,
  systemd
-Standards-Version: 4.1.0
+Standards-Version: 4.1.1
 Homepage: https://www.wireguard.com
 Vcs-Git: https://anonscm.debian.org/git/collab-maint/wireguard.git
 Vcs-Browser: https://anonscm.debian.org/git/collab-maint/wireguard.git
