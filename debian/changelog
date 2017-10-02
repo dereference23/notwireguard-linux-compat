@@ -1,3 +1,10 @@
+wireguard (0.0.20171001-1) unstable; urgency=medium
+
+  * New upstream release
+  * Standards-Version: bump to 4.1.1 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 02 Oct 2017 10:08:23 -0700
+
 wireguard (0.0.20170918-1) unstable; urgency=medium
 
   * New upstream release
