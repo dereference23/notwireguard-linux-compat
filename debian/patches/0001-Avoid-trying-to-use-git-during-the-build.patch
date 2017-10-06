@@ -9,11 +9,11 @@ during the debian build, we'll use the debian version.
  1 file changed, 4 insertions(+), 8 deletions(-)
 
 diff --git a/src/Makefile b/src/Makefile
-index 960bbb4..4a01470 100644
+index a8a7265..a2db00a 100644
 --- a/src/Makefile
 +++ b/src/Makefile
 @@ -10,19 +10,15 @@ all: module tools
- debug: module-debug tools
+ debug: module-debug tools-debug
  
  version.h:
 -	@export GIT_CEILING_DIRECTORIES="$$(readlink -f ../..)" && \
