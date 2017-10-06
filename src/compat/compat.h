@@ -1,7 +1,7 @@
 /* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
-#ifndef COMPAT_H
-#define COMPAT_H
+#ifndef _WG_COMPAT_H
+#define _WG_COMPAT_H
 
 #include <linux/kconfig.h>
 #include <linux/version.h>
@@ -425,18 +425,34 @@ static inline struct nlattr **genl_family_attrbuf(const struct genl_family *fami
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+#include <net/genetlink.h>
+#ifndef GENL_UNS_ADMIN_PERM
 #define GENL_UNS_ADMIN_PERM GENL_ADMIN_PERM
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
 #include <net/genetlink.h>
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0) && !defined(ISRHEL7)
 #define genl_register_family(a) genl_register_family_with_ops(a, (struct genl_ops *)genl_ops, ARRAY_SIZE(genl_ops))
 #else
 #define genl_register_family(a) genl_register_family_with_ops(a, genl_ops)
 #endif
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define get_device_dump(a, b) get_device_dump_real(a, b); \
+static int get_device_dump(a, b) { \
+	struct wireguard_device *wg = (struct wireguard_device *)cb->args[0]; \
+	if (!wg) { \
+		int ret = get_device_start(cb); \
+		if (ret) \
+			return ret; \
+	} \
+	return get_device_dump_real(skb, cb); \
+} \
+static int get_device_dump_real(a, b)
+#endif
 
 /* https://lkml.org/lkml/2017/6/23/790 */
 #if IS_ENABLED(CONFIG_NF_CONNTRACK)
@@ -477,4 +493,4 @@ static inline void new_icmpv6_send(struct sk_buff *skb, u8 type, u8 code, __u32 
 #define __read_mostly
 #endif
 
-#endif
+#endif /* _WG_COMPAT_H */

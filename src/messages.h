@@ -4,8 +4,8 @@
  * See doc/protocol.md for more info
  */
 
-#ifndef MESSAGES_H
-#define MESSAGES_H
+#ifndef _WG_MESSAGES_H
+#define _WG_MESSAGES_H
 
 #include "crypto/curve25519.h"
 #include "crypto/chacha20poly1305.h"
@@ -46,7 +46,7 @@ enum limits {
 	REKEY_AFTER_TIME = 120 * HZ,
 	REJECT_AFTER_TIME = 180 * HZ,
 	INITIATIONS_PER_SECOND = HZ / 50,
-	MAX_PEERS_PER_DEVICE = 1 << 20,
+	MAX_PEERS_PER_DEVICE = 1U << 20,
 	KEEPALIVE_TIMEOUT = 10 * HZ,
 	MAX_TIMER_HANDSHAKES = (90 * HZ) / REKEY_TIMEOUT,
 	MAX_QUEUED_INCOMING_HANDSHAKES = 4096, /* TODO: replace this with DQL */
@@ -125,27 +125,4 @@ enum {
 	HANDSHAKE_DSCP = 0b10001000 /* AF41, plus 00 ECN */
 };
 
-static const unsigned int message_header_sizes[MESSAGE_TOTAL] = {
-	[MESSAGE_HANDSHAKE_INITIATION] = sizeof(struct message_handshake_initiation),
-	[MESSAGE_HANDSHAKE_RESPONSE] = sizeof(struct message_handshake_response),
-	[MESSAGE_HANDSHAKE_COOKIE] = sizeof(struct message_handshake_cookie),
-	[MESSAGE_DATA] = sizeof(struct message_data)
-};
-
-static inline enum message_type message_determine_type(struct sk_buff *skb)
-{
-	struct message_header *header = (struct message_header *)skb->data;
-	if (unlikely(skb->len < sizeof(struct message_header)))
-		return MESSAGE_INVALID;
-	if (header->type == cpu_to_le32(MESSAGE_DATA) && skb->len >= MESSAGE_MINIMUM_LENGTH)
-		return MESSAGE_DATA;
-	if (header->type == cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION) && skb->len == sizeof(struct message_handshake_initiation))
-		return MESSAGE_HANDSHAKE_INITIATION;
-	if (header->type == cpu_to_le32(MESSAGE_HANDSHAKE_RESPONSE) && skb->len == sizeof(struct message_handshake_response))
-		return MESSAGE_HANDSHAKE_RESPONSE;
-	if (header->type == cpu_to_le32(MESSAGE_HANDSHAKE_COOKIE) && skb->len == sizeof(struct message_handshake_cookie))
-		return MESSAGE_HANDSHAKE_COOKIE;
-	return MESSAGE_INVALID;
-}
-
-#endif
+#endif /* _WG_MESSAGES_H */

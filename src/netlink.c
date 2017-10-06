@@ -70,6 +70,7 @@ static int get_allowedips(void *ctx, union nf_inet_addr ip, u8 cidr, int family)
 {
 	struct nlattr *allowedip_nest;
 	struct allowedips_ctx *actx = ctx;
+
 	if (++actx->idx < actx->idx_cursor)
 		return 0;
 	allowedip_nest = nla_nest_start(actx->skb, actx->idx - 1);
@@ -91,6 +92,7 @@ static int get_peer(struct wireguard_peer *peer, unsigned int index, unsigned in
 	struct allowedips_ctx ctx = { .skb = skb, .idx_cursor = *allowedips_idx_cursor };
 	struct nlattr *allowedips_nest, *peer_nest = nla_nest_start(skb, index);
 	bool fail;
+
 	if (!peer_nest)
 		return -EMSGSIZE;
 
@@ -139,11 +141,12 @@ err:
 	return -EMSGSIZE;
 }
 
-static int get_start(struct netlink_callback *cb)
+static int get_device_start(struct netlink_callback *cb)
 {
 	struct wireguard_device *wg;
 	struct nlattr **attrs = genl_family_attrbuf(&genl_family);
 	int ret = nlmsg_parse(cb->nlh, GENL_HDRLEN + genl_family.hdrsize, attrs, genl_family.maxattr, device_policy, NULL);
+
 	if (ret < 0)
 		return ret;
 	wg = lookup_interface(attrs, cb->skb);
@@ -153,7 +156,7 @@ static int get_start(struct netlink_callback *cb)
 	return 0;
 }
 
-static int get(struct sk_buff *skb, struct netlink_callback *cb)
+static int get_device_dump(struct sk_buff *skb, struct netlink_callback *cb)
 {
 	struct wireguard_device *wg = (struct wireguard_device *)cb->args[0];
 	struct wireguard_peer *peer, *next_peer_cursor = NULL, *last_peer_cursor = (struct wireguard_peer *)cb->args[1];
@@ -162,15 +165,6 @@ static int get(struct sk_buff *skb, struct netlink_callback *cb)
 	bool done = true;
 	void *hdr;
 	int ret = -EMSGSIZE;
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-	if (!wg) {
-		ret = get_start(cb);
-		if (ret)
-			return ret;
-		return get(skb, cb);
-	}
-#endif
 
 	rtnl_lock();
 	mutex_lock(&wg->device_update_lock);
@@ -242,19 +236,21 @@ out:
 	 * in the kernel for marking skbs as zero_on_free. */
 }
 
-static int get_done(struct netlink_callback *cb)
+static int get_device_done(struct netlink_callback *cb)
 {
 	struct wireguard_device *wg = (struct wireguard_device *)cb->args[0];
 	struct wireguard_peer *peer = (struct wireguard_peer *)cb->args[1];
+
 	if (wg)
 		dev_put(wg->dev);
 	peer_put(peer);
 	return 0;
 }
 
-static int set_device_port(struct wireguard_device *wg, u16 port)
+static int set_port(struct wireguard_device *wg, u16 port)
 {
 	struct wireguard_peer *peer, *temp;
+
 	if (wg->incoming_port == port)
 		return 0;
 	socket_uninit(wg);
@@ -380,10 +376,11 @@ out:
 	return ret;
 }
 
-static int set(struct sk_buff *skb, struct genl_info *info)
+static int set_device(struct sk_buff *skb, struct genl_info *info)
 {
 	int ret;
 	struct wireguard_device *wg = lookup_interface(info->attrs, skb);
+
 	if (IS_ERR(wg)) {
 		ret = PTR_ERR(wg);
 		goto out_nodev;
@@ -401,7 +398,7 @@ static int set(struct sk_buff *skb, struct genl_info *info)
 	}
 
 	if (info->attrs[WGDEVICE_A_LISTEN_PORT]) {
-		ret = set_device_port(wg, nla_get_u16(info->attrs[WGDEVICE_A_LISTEN_PORT]));
+		ret = set_port(wg, nla_get_u16(info->attrs[WGDEVICE_A_LISTEN_PORT]));
 		if (ret)
 			goto out;
 	}
@@ -455,15 +452,15 @@ static const struct genl_ops genl_ops[] = {
 	{
 		.cmd = WG_CMD_GET_DEVICE,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
-		.start = get_start,
+		.start = get_device_start,
 #endif
-		.dumpit = get,
-		.done = get_done,
+		.dumpit = get_device_dump,
+		.done = get_device_done,
 		.policy = device_policy,
 		.flags = GENL_UNS_ADMIN_PERM
 	}, {
 		.cmd = WG_CMD_SET_DEVICE,
-		.doit = set,
+		.doit = set_device,
 		.policy = device_policy,
 		.flags = GENL_UNS_ADMIN_PERM
 	}

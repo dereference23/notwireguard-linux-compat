@@ -1,7 +1,7 @@
 /* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
 
-#ifndef WGDEVICE_H
-#define WGDEVICE_H
+#ifndef _WG_DEVICE_H
+#define _WG_DEVICE_H
 
 #include "noise.h"
 #include "routingtable.h"
@@ -13,6 +13,7 @@
 #include <linux/workqueue.h>
 #include <linux/mutex.h>
 #include <linux/net.h>
+#include <linux/ptr_ring.h>
 
 struct wireguard_device;
 
@@ -22,9 +23,7 @@ struct multicore_worker {
 };
 
 struct crypt_queue {
-	spinlock_t lock;
-	int len;
-	struct list_head queue;
+	struct ptr_ring ring;
 	union {
 		struct {
 			struct multicore_worker __percpu *worker;
@@ -58,4 +57,4 @@ struct wireguard_device {
 int device_init(void);
 void device_uninit(void);
 
-#endif
+#endif /* _WG_DEVICE_H */
