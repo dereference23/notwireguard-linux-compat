@@ -25,52 +25,38 @@ static void node_free_rcu(struct rcu_head *rcu)
 {
 	kfree(container_of(rcu, struct routing_table_node, rcu));
 }
-#define push(p, lock) ({ \
+
+#define push(stack, p, len) ({ \
 	if (rcu_access_pointer(p)) { \
 		BUG_ON(len >= 128); \
-		stack[len++] = lock ? rcu_dereference_protected(p, lockdep_is_held((struct mutex *)lock)) : rcu_dereference_bh(p); \
+		stack[len++] = rcu_dereference_protected(p, lockdep_is_held(lock)); \
 	} \
 	true; \
 })
-#define walk_prep \
-	struct routing_table_node *stack[128], *node; \
-	unsigned int len;
-#define walk(top, lock) for (len = 0, push(top, lock); len > 0 && (node = stack[--len]) && push(node->bit[0], lock) && push(node->bit[1], lock);)
-
 static void free_root_node(struct routing_table_node __rcu *top, struct mutex *lock)
 {
-	walk_prep;
+	struct routing_table_node *stack[128], *node;
+	unsigned int len;
 
-	walk (top, lock)
+	for (len = 0, push(stack, top, len); len > 0 && (node = stack[--len]) && push(stack, node->bit[0], len) && push(stack, node->bit[1], len);)
 		call_rcu_bh(&node->rcu, node_free_rcu);
 }
 
-static size_t count_nodes(struct routing_table_node __rcu *top)
+static int walk_by_peer(struct routing_table_node __rcu *top, int family, struct routing_table_cursor *cursor, struct wireguard_peer *peer, int (*func)(void *ctx, const u8 *ip, u8 cidr, int family), void *ctx, struct mutex *lock)
 {
-	size_t ret = 0;
-	walk_prep;
-
-	walk (top, NULL) {
-		if (node->peer)
-			++ret;
-	}
-	return ret;
-}
-
-static int walk_ips_by_peer(struct routing_table_node __rcu *top, int family, void *ctx, struct wireguard_peer *peer, int (*func)(void *ctx, union nf_inet_addr ip, u8 cidr, int family), struct mutex *maybe_lock)
-{
+	struct routing_table_node *node;
 	int ret;
-	union nf_inet_addr ip = { .all = { 0 } };
-	walk_prep;
 
-	if (unlikely(!peer))
+	if (!rcu_access_pointer(top))
 		return 0;
 
-	walk (top, maybe_lock) {
+	if (!cursor->len)
+		push(cursor->stack, top, cursor->len);
+
+	for (; cursor->len > 0 && (node = cursor->stack[cursor->len - 1]); --cursor->len, push(cursor->stack, node->bit[0], cursor->len), push(cursor->stack, node->bit[1], cursor->len)) {
 		if (node->peer != peer)
 			continue;
-		memcpy(ip.all, node->bits, family == AF_INET6 ? 16 : 4);
-		ret = func(ctx, ip, node->cidr, family);
+		ret = func(ctx, node->bits, node->cidr, family);
 		if (ret)
 			return ret;
 	}
@@ -185,6 +171,9 @@ static int add(struct routing_table_node __rcu **trie, u8 bits, const u8 *key, u
 {
 	struct routing_table_node *node, *parent, *down, *newnode;
 
+	if (unlikely(cidr > bits || !peer))
+		return -EINVAL;
+
 	if (!rcu_access_pointer(*trie)) {
 		node = kzalloc(sizeof(*node) + (bits + 7) / 8, GFP_KERNEL);
 		if (!node)
@@ -243,92 +232,55 @@ static int add(struct routing_table_node __rcu **trie, u8 bits, const u8 *key, u
 
 void routing_table_init(struct routing_table *table)
 {
-	memset(table, 0, sizeof(struct routing_table));
-	mutex_init(&table->table_update_lock);
+	table->root4 = table->root6 = NULL;
+	table->seq = 1;
 }
 
-void routing_table_free(struct routing_table *table)
+void routing_table_free(struct routing_table *table, struct mutex *lock)
 {
-	mutex_lock(&table->table_update_lock);
-	free_root_node(table->root4, &table->table_update_lock);
+	++table->seq;
+	free_root_node(table->root4, lock);
 	rcu_assign_pointer(table->root4, NULL);
-	free_root_node(table->root6, &table->table_update_lock);
+	free_root_node(table->root6, lock);
 	rcu_assign_pointer(table->root6, NULL);
-	mutex_unlock(&table->table_update_lock);
 }
 
-int routing_table_insert_v4(struct routing_table *table, const struct in_addr *ip, u8 cidr, struct wireguard_peer *peer)
+int routing_table_insert_v4(struct routing_table *table, const struct in_addr *ip, u8 cidr, struct wireguard_peer *peer, struct mutex *lock)
+{
+	++table->seq;
+	return add(&table->root4, 32, (const u8 *)ip, cidr, peer, lock);
+}
+
+int routing_table_insert_v6(struct routing_table *table, const struct in6_addr *ip, u8 cidr, struct wireguard_peer *peer, struct mutex *lock)
+{
+	++table->seq;
+	return add(&table->root6, 128, (const u8 *)ip, cidr, peer, lock);
+}
+
+void routing_table_remove_by_peer(struct routing_table *table, struct wireguard_peer *peer, struct mutex *lock)
+{
+	++table->seq;
+	walk_remove_by_peer(&table->root4, peer, lock);
+	walk_remove_by_peer(&table->root6, peer, lock);
+}
+
+int routing_table_walk_by_peer(struct routing_table *table, struct routing_table_cursor *cursor, struct wireguard_peer *peer, int (*func)(void *ctx, const u8 *ip, u8 cidr, int family), void *ctx, struct mutex *lock)
 {
 	int ret;
 
-	if (unlikely(cidr > 32 || !peer))
-		return -EINVAL;
-	mutex_lock(&table->table_update_lock);
-	ret = add(&table->root4, 32, (const u8 *)ip, cidr, peer, &table->table_update_lock);
-	mutex_unlock(&table->table_update_lock);
-	return ret;
-}
+	if (!cursor->seq)
+		cursor->seq = table->seq;
+	else if (cursor->seq != table->seq)
+		return 0;
 
-int routing_table_insert_v6(struct routing_table *table, const struct in6_addr *ip, u8 cidr, struct wireguard_peer *peer)
-{
-	int ret;
-
-	if (unlikely(cidr > 128 || !peer))
-		return -EINVAL;
-	mutex_lock(&table->table_update_lock);
-	ret = add(&table->root6, 128, (const u8 *)ip, cidr, peer, &table->table_update_lock);
-	mutex_unlock(&table->table_update_lock);
-	return ret;
-}
-
-void routing_table_remove_by_peer(struct routing_table *table, struct wireguard_peer *peer)
-{
-	mutex_lock(&table->table_update_lock);
-	walk_remove_by_peer(&table->root4, peer, &table->table_update_lock);
-	walk_remove_by_peer(&table->root6, peer, &table->table_update_lock);
-	mutex_unlock(&table->table_update_lock);
-}
-
-size_t routing_table_count_nodes(struct routing_table *table)
-{
-	size_t ret;
-
-	rcu_read_lock_bh();
-	ret = count_nodes(table->root4) + count_nodes(table->root6);
-	rcu_read_unlock_bh();
-	return ret;
-}
-
-int routing_table_walk_ips_by_peer(struct routing_table *table, void *ctx, struct wireguard_peer *peer, int (*func)(void *ctx, union nf_inet_addr ip, u8 cidr, int family))
-{
-	int ret;
-
-	rcu_read_lock_bh();
-	ret = walk_ips_by_peer(table->root4, AF_INET, ctx, peer, func, NULL);
-	rcu_read_unlock_bh();
-	if (ret)
-		return ret;
-
-	rcu_read_lock_bh();
-	ret = walk_ips_by_peer(table->root6, AF_INET6, ctx, peer, func, NULL);
-	rcu_read_unlock_bh();
-	return ret;
-}
-
-int routing_table_walk_ips_by_peer_sleepable(struct routing_table *table, void *ctx, struct wireguard_peer *peer, int (*func)(void *ctx, union nf_inet_addr ip, u8 cidr, int family))
-{
-	int ret;
-
-	mutex_lock(&table->table_update_lock);
-	ret = walk_ips_by_peer(table->root4, AF_INET, ctx, peer, func, &table->table_update_lock);
-	mutex_unlock(&table->table_update_lock);
-	if (ret)
-		return ret;
-
-	mutex_lock(&table->table_update_lock);
-	ret = walk_ips_by_peer(table->root6, AF_INET6, ctx, peer, func, &table->table_update_lock);
-	mutex_unlock(&table->table_update_lock);
-	return ret;
+	if (!cursor->second_half) {
+		ret = walk_by_peer(table->root4, AF_INET, cursor, peer, func, ctx, lock);
+		if (ret)
+			return ret;
+		cursor->len = 0;
+		cursor->second_half = true;
+	}
+	return walk_by_peer(table->root6, AF_INET6, cursor, peer, func, ctx, lock);
 }
 
 /* Returns a strong reference to a peer */

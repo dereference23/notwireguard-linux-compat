@@ -13,6 +13,7 @@
 #include <linux/udp.h>
 #include <net/ip_tunnels.h>
 
+/* Must be called with bh disabled. */
 static inline void rx_stats(struct wireguard_peer *peer, size_t len)
 {
 	struct pcpu_sw_netstats *tstats = get_cpu_ptr(peer->device->dev->tstats);
@@ -23,14 +24,6 @@ static inline void rx_stats(struct wireguard_peer *peer, size_t len)
 	u64_stats_update_end(&tstats->syncp);
 	put_cpu_ptr(tstats);
 	peer->rx_bytes += len;
-}
-
-static inline void update_latest_addr(struct wireguard_peer *peer, struct sk_buff *skb)
-{
-	struct endpoint endpoint;
-
-	if (!socket_endpoint_from_skb(&endpoint, skb))
-		socket_set_peer_endpoint(peer, &endpoint);
 }
 
 #define SKB_TYPE_LE32(skb) ((struct message_header *)(skb)->data)->type
@@ -83,7 +76,7 @@ static inline int skb_prepare_header(struct sk_buff *skb, struct wireguard_devic
 
 static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff *skb)
 {
-	static unsigned long last_under_load = 0; /* Yes this is global, so that our load calculation applies to the whole system. */
+	static u64 last_under_load = 0; /* Yes this is global, so that our load calculation applies to the whole system. */
 	struct wireguard_peer *peer = NULL;
 	bool under_load;
 	enum cookie_mac_state mac_state;
@@ -97,9 +90,9 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 
 	under_load = skb_queue_len(&wg->incoming_handshakes) >= MAX_QUEUED_INCOMING_HANDSHAKES / 8;
 	if (under_load)
-		last_under_load = jiffies;
-	else
-		under_load = time_is_after_jiffies(last_under_load + HZ);
+		last_under_load = get_jiffies_64();
+	else if (last_under_load)
+		under_load = time_is_after_jiffies64(last_under_load + HZ);
 	mac_state = cookie_validate_packet(&wg->cookie_checker, skb, under_load);
 	if ((under_load && mac_state == VALID_MAC_WITH_COOKIE) || (!under_load && mac_state == VALID_MAC_BUT_NO_COOKIE))
 		packet_needs_cookie = false;
@@ -122,7 +115,7 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 			net_dbg_skb_ratelimited("%s: Invalid handshake initiation from %pISpfsc\n", wg->dev->name, skb);
 			return;
 		}
-		update_latest_addr(peer, skb);
+		socket_set_peer_endpoint_from_skb(peer, skb);
 		net_dbg_ratelimited("%s: Receiving handshake initiation from peer %Lu (%pISpfsc)\n", wg->dev->name, peer->internal_id, &peer->endpoint.addr);
 		packet_send_handshake_response(peer);
 		break;
@@ -138,7 +131,7 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 			net_dbg_skb_ratelimited("%s: Invalid handshake response from %pISpfsc\n", wg->dev->name, skb);
 			return;
 		}
-		update_latest_addr(peer, skb);
+		socket_set_peer_endpoint_from_skb(peer, skb);
 		net_dbg_ratelimited("%s: Receiving handshake response from peer %Lu (%pISpfsc)\n", wg->dev->name, peer->internal_id, &peer->endpoint.addr);
 		if (noise_handshake_begin_session(&peer->handshake, &peer->keypairs)) {
 			timers_session_derived(peer);
@@ -158,7 +151,10 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 
 	BUG_ON(!peer);
 
+	local_bh_disable();
 	rx_stats(peer, skb->len);
+	local_bh_enable();
+
 	timers_any_authenticated_packet_received(peer);
 	timers_any_authenticated_packet_traversal(peer);
 	peer_put(peer);
