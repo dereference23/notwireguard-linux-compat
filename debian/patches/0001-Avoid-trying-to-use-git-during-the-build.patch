@@ -9,7 +9,7 @@ during the debian build, we'll use the debian version.
  1 file changed, 4 insertions(+), 8 deletions(-)
 
 diff --git a/src/Makefile b/src/Makefile
-index a8a7265..a2db00a 100644
+index f933eb1..2fa53bf 100644
 --- a/src/Makefile
 +++ b/src/Makefile
 @@ -10,19 +10,15 @@ all: module tools
@@ -35,4 +35,4 @@ index a8a7265..a2db00a 100644
 +	sed -i "s/PACKAGE_VERSION=.*/PACKAGE_VERSION=\"$$ver\"/" dkms.conf || true
  
  module: version.h
- 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+ 	@$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
