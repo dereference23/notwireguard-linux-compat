@@ -24,8 +24,8 @@
 
 static const u8 handshake_name[37] = "Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s";
 static const u8 identifier_name[34] = "WireGuard v1 zx2c4 Jason@zx2c4.com";
-static u8 handshake_init_hash[NOISE_HASH_LEN] __read_mostly;
-static u8 handshake_init_chaining_key[NOISE_HASH_LEN] __read_mostly;
+static u8 handshake_init_hash[NOISE_HASH_LEN] __ro_after_init;
+static u8 handshake_init_chaining_key[NOISE_HASH_LEN] __ro_after_init;
 static atomic64_t keypair_counter = ATOMIC64_INIT(0);
 
 void __init noise_init(void)
@@ -187,10 +187,8 @@ bool noise_received_with_keypair(struct noise_keypairs *keypairs, struct noise_k
 	bool key_is_new;
 	struct noise_keypair *old_keypair;
 
-	/* We first check without taking the spinlock but just RCU. */
-	rcu_read_lock_bh();
-	key_is_new = received_keypair == rcu_dereference_bh(keypairs->next_keypair);
-	rcu_read_unlock_bh();
+	/* We first check without taking the spinlock. */
+	key_is_new = received_keypair == rcu_access_pointer(keypairs->next_keypair);
 	if (likely(!key_is_new))
 		return false;
 

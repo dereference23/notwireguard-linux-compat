@@ -9,6 +9,10 @@ PWD := $(shell pwd)
 all: module tools
 debug: module-debug tools-debug
 
+ifneq ($(V),1)
+MAKEFLAGS += --no-print-directory
+endif
+
 version.h:
 	@export GIT_CEILING_DIRECTORIES="$$(readlink -f ../..)" && \
 	ver="#define WIREGUARD_VERSION \"$$(git describe --dirty 2>/dev/null)\"" && \
@@ -67,8 +71,8 @@ check: clean
 coccicheck: clean
 	@$(MAKE) -C $(KERNELDIR) M=$(PWD) CONFIG_WIREGUARD_DEBUG=y coccicheck MODE=report
 
-cloc: clean
-	@cloc --skip-uniqueness --by-file --extract-with="$$(readlink -f ../contrib/kernel-tree/filter-compat-defines.sh) >FILE< > \$$(basename >FILE<)" $(wildcard *.c) $(wildcard *.h)
+cloc:
+	@cloc --skip-uniqueness --by-file --extract-with="$$(readlink -f ../contrib/kernel-tree/filter-compat-defines.sh) >FILE< > \$$(basename >FILE<)" $(filter-out wireguard.mod.c,$(wildcard *.c)) $(wildcard *.h)
 
 -include tests/debug.mk
 

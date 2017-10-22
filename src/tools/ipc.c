@@ -97,7 +97,7 @@ static void warn_unrecognized(const char *which)
 	if (once)
 		return;
 	once = true;
-	fprintf(stderr, "Warning: one or more unrecognized %s attributes", which);
+	fprintf(stderr, "Warning: one or more unrecognized %s attributes\n", which);
 }
 
 static FILE *userspace_interface_file(const char *interface)
@@ -555,7 +555,7 @@ static int kernel_set_device(struct wgdevice *dev)
 	struct nlmsghdr *nlh;
 	struct mnlg_socket *nlg;
 
-	nlg= mnlg_socket_open(WG_GENL_NAME, WG_GENL_VERSION);
+	nlg = mnlg_socket_open(WG_GENL_NAME, WG_GENL_VERSION);
 	if (!nlg)
 		return -errno;
 
@@ -683,6 +683,8 @@ static int parse_allowedip(const struct nlattr *attr, void *data)
 	struct wgallowedip *allowedip = data;
 
 	switch (mnl_attr_get_type(attr)) {
+	case WGALLOWEDIP_A_UNSPEC:
+		break;
 	case WGALLOWEDIP_A_FAMILY:
 		if (!mnl_attr_validate(attr, MNL_TYPE_U16))
 			allowedip->family = mnl_attr_get_u16(attr);
@@ -733,6 +735,8 @@ static int parse_peer(const struct nlattr *attr, void *data)
 	struct wgpeer *peer = data;
 
 	switch (mnl_attr_get_type(attr)) {
+	case WGPEER_A_UNSPEC:
+		break;
 	case WGPEER_A_PUBLIC_KEY:
 		if (mnl_attr_get_payload_len(attr) == sizeof(peer->public_key))
 			memcpy(peer->public_key, mnl_attr_get_payload(attr), sizeof(peer->public_key));
@@ -806,6 +810,8 @@ static int parse_device(const struct nlattr *attr, void *data)
 	struct wgdevice *device = data;
 
 	switch (mnl_attr_get_type(attr)) {
+	case WGDEVICE_A_UNSPEC:
+		break;
 	case WGDEVICE_A_IFINDEX:
 		if (!mnl_attr_validate(attr, MNL_TYPE_U32))
 			device->ifindex = mnl_attr_get_u32(attr);

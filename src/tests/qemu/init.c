@@ -24,12 +24,7 @@ __attribute__((noreturn)) static void poweroff(void)
 {
 	fflush(stdout);
 	fflush(stderr);
-#if defined(__x86_64__) || defined(__i386__)
-	ioperm(0x604, 2, 1);
-	outw(1U << 13, 0x604);
-#else
-	reboot(RB_POWER_OFF);
-#endif
+	reboot(RB_AUTOBOOT);
 	sleep(30);
 	fprintf(stderr, "\x1b[37m\x1b[41m\x1b[1mFailed to power off!!!\x1b[0m\n");
 	exit(1);
@@ -112,26 +107,6 @@ static void enable_logging(void)
 	close(fd);
 }
 
-static void watchdog(void)
-{
-	pretty_message("[+] Enabling watchdog timer...");
-
-	ioperm(0x443, 1, 1);
-	outb(14, 0x443);
-
-	if (fork())
-		return;
-
-	setpriority(PRIO_PROCESS, 0, -20);
-
-	for (;;) {
-		outb(14, 0x443);
-		sleep(1);
-	}
-
-	_exit(0);
-}
-
 static void kmod_selftests(void)
 {
 	FILE *file;
@@ -201,17 +176,32 @@ static bool linux_4_8_or_higher(const struct utsname *utsname)
 	return KERNEL_VERSION(maj, min, rel) >= KERNEL_VERSION(4, 8, 0);
 }
 
+static void ensure_console(void)
+{
+	for (unsigned int i = 0; i < 1000; ++i) {
+		int fd = open("/dev/console", O_RDWR);
+		if (fd < 0) {
+			usleep(50000);
+			continue;
+		}
+		dup2(fd, 0);
+		dup2(fd, 1);
+		dup2(fd, 2);
+		close(fd);
+		if (write(1, "\0\0\0\0\n", 5) == 5)
+			return;
+	}
+	panic("Unable to open console device");
+}
+
 int main(int argc, char *argv[])
 {
 	struct utsname utsname;
 
-	if (write(1, "\0\0\0\0\n", 5) < 0)
-		reboot(RB_AUTOBOOT);
-
+	ensure_console();
 	if (uname(&utsname) < 0)
 		panic("uname");
 	print_banner(&utsname);
-	watchdog();
 	mount_filesystems();
 	kmod_selftests();
 	if (!linux_4_8_or_higher(&utsname))
