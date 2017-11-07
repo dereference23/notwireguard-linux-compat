@@ -19,14 +19,14 @@ static inline void rx_stats(struct wireguard_peer *peer, size_t len)
 	struct pcpu_sw_netstats *tstats = get_cpu_ptr(peer->device->dev->tstats);
 
 	u64_stats_update_begin(&tstats->syncp);
-	tstats->rx_bytes += len;
 	++tstats->rx_packets;
+	tstats->rx_bytes += len;
+	peer->rx_bytes += len;
 	u64_stats_update_end(&tstats->syncp);
 	put_cpu_ptr(tstats);
-	peer->rx_bytes += len;
 }
 
-#define SKB_TYPE_LE32(skb) ((struct message_header *)(skb)->data)->type
+#define SKB_TYPE_LE32(skb) (((struct message_header *)(skb)->data)->type)
 
 static inline size_t validate_header_len(struct sk_buff *skb)
 {
@@ -76,7 +76,7 @@ static inline int skb_prepare_header(struct sk_buff *skb, struct wireguard_devic
 
 static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff *skb)
 {
-	static u64 last_under_load = 0; /* Yes this is global, so that our load calculation applies to the whole system. */
+	static u64 last_under_load; /* Yes this is global, so that our load calculation applies to the whole system. */
 	struct wireguard_peer *peer = NULL;
 	bool under_load;
 	enum cookie_mac_state mac_state;
@@ -106,6 +106,7 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 	switch (SKB_TYPE_LE32(skb)) {
 	case cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION): {
 		struct message_handshake_initiation *message = (struct message_handshake_initiation *)skb->data;
+
 		if (packet_needs_cookie) {
 			packet_send_handshake_cookie(wg, skb, message->sender_index);
 			return;
@@ -116,12 +117,13 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 			return;
 		}
 		socket_set_peer_endpoint_from_skb(peer, skb);
-		net_dbg_ratelimited("%s: Receiving handshake initiation from peer %Lu (%pISpfsc)\n", wg->dev->name, peer->internal_id, &peer->endpoint.addr);
+		net_dbg_ratelimited("%s: Receiving handshake initiation from peer %llu (%pISpfsc)\n", wg->dev->name, peer->internal_id, &peer->endpoint.addr);
 		packet_send_handshake_response(peer);
 		break;
 	}
 	case cpu_to_le32(MESSAGE_HANDSHAKE_RESPONSE): {
 		struct message_handshake_response *message = (struct message_handshake_response *)skb->data;
+
 		if (packet_needs_cookie) {
 			packet_send_handshake_cookie(wg, skb, message->sender_index);
 			return;
@@ -132,24 +134,25 @@ static void receive_handshake_packet(struct wireguard_device *wg, struct sk_buff
 			return;
 		}
 		socket_set_peer_endpoint_from_skb(peer, skb);
-		net_dbg_ratelimited("%s: Receiving handshake response from peer %Lu (%pISpfsc)\n", wg->dev->name, peer->internal_id, &peer->endpoint.addr);
+		net_dbg_ratelimited("%s: Receiving handshake response from peer %llu (%pISpfsc)\n", wg->dev->name, peer->internal_id, &peer->endpoint.addr);
 		if (noise_handshake_begin_session(&peer->handshake, &peer->keypairs)) {
 			timers_session_derived(peer);
 			timers_handshake_complete(peer);
 			/* Calling this function will either send any existing packets in the queue
 			 * and not send a keepalive, which is the best case, Or, if there's nothing
 			 * in the queue, it will send a keepalive, in order to give immediate
-			 * confirmation of the session. */
+			 * confirmation of the session.
+			 */
 			packet_send_keepalive(peer);
 		}
 		break;
 	}
-	default:
+	}
+
+	if (unlikely(!peer)) {
 		WARN(1, "Somehow a wrong type of packet wound up in the handshake queue!\n");
 		return;
 	}
-
-	BUG_ON(!peer);
 
 	local_bh_disable();
 	rx_stats(peer, skb->len);
@@ -212,7 +215,8 @@ static inline bool skb_decrypt(struct sk_buff *skb, struct noise_symmetric_key *
 
 	/* We ensure that the network header is part of the packet before we
 	 * call skb_cow_data, so that there's no chance that data is removed
-	 * from the skb, so that later we can extract the original endpoint. */
+	 * from the skb, so that later we can extract the original endpoint.
+	 */
 	offset = skb->data - skb_network_header(skb);
 	skb_push(skb, offset);
 	num_frags = skb_cow_data(skb, 0, &trailer);
@@ -229,7 +233,8 @@ static inline bool skb_decrypt(struct sk_buff *skb, struct noise_symmetric_key *
 		return false;
 
 	/* Another ugly situation of pushing and pulling the header so as to
-	 * keep endpoint information intact. */
+	 * keep endpoint information intact.
+	 */
 	skb_push(skb, offset);
 	if (pskb_trim(skb, skb->len - noise_encrypted_len(0)))
 		return false;
@@ -277,7 +282,7 @@ static void packet_consume_data_done(struct sk_buff *skb, struct endpoint *endpo
 {
 	struct wireguard_peer *peer = PACKET_PEER(skb), *routed_peer;
 	struct net_device *dev = peer->device->dev;
-	unsigned int len;
+	unsigned int len, len_before_trim;
 
 	socket_set_peer_endpoint(peer, endpoint);
 
@@ -290,7 +295,8 @@ static void packet_consume_data_done(struct sk_buff *skb, struct endpoint *endpo
 
 	/* A packet with length 0 is a keepalive packet */
 	if (unlikely(!skb->len)) {
-		net_dbg_ratelimited("%s: Receiving keepalive packet from peer %Lu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
+		rx_stats(peer, message_data_len(0));
+		net_dbg_ratelimited("%s: Receiving keepalive packet from peer %llu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
 		goto packet_processed;
 	}
 
@@ -317,6 +323,7 @@ static void packet_consume_data_done(struct sk_buff *skb, struct endpoint *endpo
 
 	if (unlikely(len > skb->len))
 		goto dishonest_packet_size;
+	len_before_trim = skb->len;
 	if (unlikely(pskb_trim(skb, len)))
 		goto packet_processed;
 
@@ -328,26 +335,25 @@ static void packet_consume_data_done(struct sk_buff *skb, struct endpoint *endpo
 	if (unlikely(routed_peer != peer))
 		goto dishonest_packet_peer;
 
-	len = skb->len;
 	if (unlikely(netif_receive_skb(skb) == NET_RX_DROP)) {
 		++dev->stats.rx_dropped;
-		net_dbg_ratelimited("%s: Failed to give packet to userspace from peer %Lu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
+		net_dbg_ratelimited("%s: Failed to give packet to userspace from peer %llu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
 	} else
-		rx_stats(peer, len);
+		rx_stats(peer, message_data_len(len_before_trim));
 	goto continue_processing;
 
 dishonest_packet_peer:
-	net_dbg_skb_ratelimited("%s: Packet has unallowed src IP (%pISc) from peer %Lu (%pISpfsc)\n", dev->name, skb, peer->internal_id, &peer->endpoint.addr);
+	net_dbg_skb_ratelimited("%s: Packet has unallowed src IP (%pISc) from peer %llu (%pISpfsc)\n", dev->name, skb, peer->internal_id, &peer->endpoint.addr);
 	++dev->stats.rx_errors;
 	++dev->stats.rx_frame_errors;
 	goto packet_processed;
 dishonest_packet_type:
-	net_dbg_ratelimited("%s: Packet is neither ipv4 nor ipv6 from peer %Lu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
+	net_dbg_ratelimited("%s: Packet is neither ipv4 nor ipv6 from peer %llu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
 	++dev->stats.rx_errors;
 	++dev->stats.rx_frame_errors;
 	goto packet_processed;
 dishonest_packet_size:
-	net_dbg_ratelimited("%s: Packet has incorrect size from peer %Lu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
+	net_dbg_ratelimited("%s: Packet has incorrect size from peer %llu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
 	++dev->stats.rx_errors;
 	++dev->stats.rx_length_errors;
 	goto packet_processed;
@@ -380,7 +386,7 @@ void packet_rx_worker(struct work_struct *work)
 			goto next;
 
 		if (unlikely(!counter_validate(&keypair->receiving.counter, PACKET_CB(skb)->nonce))) {
-			net_dbg_ratelimited("%s: Packet has invalid nonce %Lu (max %Lu)\n", peer->device->dev->name, PACKET_CB(skb)->nonce, keypair->receiving.counter.receive.counter);
+			net_dbg_ratelimited("%s: Packet has invalid nonce %llu (max %llu)\n", peer->device->dev->name, PACKET_CB(skb)->nonce, keypair->receiving.counter.receive.counter);
 			goto next;
 		}
 
@@ -408,6 +414,7 @@ void packet_decrypt_worker(struct work_struct *work)
 
 	while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
 		enum packet_state state = likely(skb_decrypt(skb, &PACKET_CB(skb)->keypair->receiving)) ? PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
+
 		queue_enqueue_per_peer(&PACKET_PEER(skb)->rx_queue, skb, state);
 	}
 }
@@ -451,6 +458,7 @@ void packet_receive(struct wireguard_device *wg, struct sk_buff *skb)
 	case cpu_to_le32(MESSAGE_HANDSHAKE_RESPONSE):
 	case cpu_to_le32(MESSAGE_HANDSHAKE_COOKIE): {
 		int cpu;
+
 		if (skb_queue_len(&wg->incoming_handshakes) > MAX_QUEUED_INCOMING_HANDSHAKES) {
 			net_dbg_skb_ratelimited("%s: Too many handshakes queued, dropping packet from %pISpfsc\n", wg->dev->name, skb);
 			goto err;

@@ -97,7 +97,7 @@ static void keypair_free_rcu(struct rcu_head *rcu)
 {
 	struct noise_keypair *keypair = container_of(rcu, struct noise_keypair, rcu);
 
-	net_dbg_ratelimited("%s: Keypair %Lu destroyed for peer %Lu\n", keypair->entry.peer->device->dev->name, keypair->internal_id, keypair->entry.peer->internal_id);
+	net_dbg_ratelimited("%s: Keypair %llu destroyed for peer %llu\n", keypair->entry.peer->device->dev->name, keypair->internal_id, keypair->entry.peer->internal_id);
 	kzfree(keypair);
 }
 
@@ -118,7 +118,7 @@ void noise_keypair_put(struct noise_keypair *keypair)
 
 struct noise_keypair *noise_keypair_get(struct noise_keypair *keypair)
 {
-	RCU_LOCKDEP_WARN(!rcu_read_lock_bh_held(), "Calling noise_keypair_get without holding the RCU BH read lock");
+	RCU_LOCKDEP_WARN(!rcu_read_lock_bh_held(), "Calling " __func__ " without holding the RCU BH read lock");
 	if (unlikely(!keypair || !kref_get_unless_zero(&keypair->refcount)))
 		return NULL;
 	return keypair;
@@ -151,29 +151,34 @@ static void add_new_keypair(struct noise_keypairs *keypairs, struct noise_keypai
 	current_keypair =  rcu_dereference_protected(keypairs->current_keypair, lockdep_is_held(&keypairs->keypair_update_lock));
 	if (new_keypair->i_am_the_initiator) {
 		/* If we're the initiator, it means we've sent a handshake, and received
-		 * a confirmation response, which means this new keypair can now be used. */
+		 * a confirmation response, which means this new keypair can now be used.
+		 */
 		if (next_keypair) {
 			/* If there already was a next keypair pending, we demote it to be
 			 * the previous keypair, and free the existing current.
 			 * TODO: note that this means KCI can result in this transition. It
 			 * would perhaps be more sound to always just get rid of the unused
 			 * next keypair instead of putting it in the previous slot, but this
-			 * might be a bit less robust. Something to think about and decide on. */
+			 * might be a bit less robust. Something to think about and decide on.
+			 */
 			rcu_assign_pointer(keypairs->next_keypair, NULL);
 			rcu_assign_pointer(keypairs->previous_keypair, next_keypair);
 			noise_keypair_put(current_keypair);
 		} else	/* If there wasn't an existing next keypair, we replace the
-			 * previous with the current one. */
+			 * previous with the current one.
+			 */
 			rcu_assign_pointer(keypairs->previous_keypair, current_keypair);
 		/* At this point we can get rid of the old previous keypair, and set up
-		 * the new keypair. */
+		 * the new keypair.
+		 */
 		noise_keypair_put(previous_keypair);
 		rcu_assign_pointer(keypairs->current_keypair, new_keypair);
 	} else {
 		/* If we're the responder, it means we can't use the new keypair until
 		 * we receive confirmation via the first data packet, so we get rid of
 		 * the existing previous one, the possibly existing next one, and slide
-		 * in the new next one. */
+		 * in the new next one.
+		 */
 		rcu_assign_pointer(keypairs->next_keypair, new_keypair);
 		noise_keypair_put(next_keypair);
 		rcu_assign_pointer(keypairs->previous_keypair, NULL);
@@ -201,7 +206,8 @@ bool noise_received_with_keypair(struct noise_keypairs *keypairs, struct noise_k
 
 	/* When we've finally received the confirmation, we slide the next
 	 * into the current, the current into the previous, and get rid of
-	 * the old previous. */
+	 * the old previous.
+	 */
 	old_keypair = rcu_dereference_protected(keypairs->previous_keypair, lockdep_is_held(&keypairs->keypair_update_lock));
 	rcu_assign_pointer(keypairs->previous_keypair, rcu_dereference_protected(keypairs->current_keypair, lockdep_is_held(&keypairs->keypair_update_lock)));
 	noise_keypair_put(old_keypair);
@@ -229,7 +235,9 @@ static void kdf(u8 *first_dst, u8 *second_dst, u8 *third_dst, const u8 *data, si
 	u8 secret[BLAKE2S_OUTBYTES];
 	u8 output[BLAKE2S_OUTBYTES + 1];
 
+#ifdef DEBUG
 	BUG_ON(first_len > BLAKE2S_OUTBYTES || second_len > BLAKE2S_OUTBYTES || third_len > BLAKE2S_OUTBYTES || ((second_len || second_dst || third_len || third_dst) && (!first_len || !first_dst)) || ((third_len || third_dst) && (!second_len || !second_dst)));
+#endif
 
 	/* Extract entropy from data into secret */
 	blake2s_hmac(secret, data, chaining_key, BLAKE2S_OUTBYTES, data_len, NOISE_HASH_LEN);
@@ -612,7 +620,7 @@ bool noise_handshake_begin_session(struct noise_handshake *handshake, struct noi
 
 	handshake_zero(handshake);
 	add_new_keypair(keypairs, new_keypair);
-	net_dbg_ratelimited("%s: Keypair %Lu created for peer %Lu\n", new_keypair->entry.peer->device->dev->name, new_keypair->internal_id, new_keypair->entry.peer->internal_id);
+	net_dbg_ratelimited("%s: Keypair %llu created for peer %llu\n", new_keypair->entry.peer->device->dev->name, new_keypair->internal_id, new_keypair->entry.peer->internal_id);
 	WARN_ON(!index_hashtable_replace(&handshake->entry.peer->device->index_hashtable, &handshake->entry, &new_keypair->entry));
 	up_write(&handshake->lock);
 

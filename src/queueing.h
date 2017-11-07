@@ -45,7 +45,7 @@ struct packet_cb {
 	atomic_t state;
 	u8 ds;
 };
-#define PACKET_PEER(skb) ((struct packet_cb *)skb->cb)->keypair->entry.peer
+#define PACKET_PEER(skb) (((struct packet_cb *)skb->cb)->keypair->entry.peer)
 #define PACKET_CB(skb) ((struct packet_cb *)skb->cb)
 
 /* Returns either the correct skb->protocol value, or 0 if invalid. */
@@ -97,7 +97,8 @@ static inline int cpumask_choose_online(int *stored_cpu, unsigned int id)
  * atomic sequence number, do an increment-and-return, and then iterate through
  * every possible CPU until we get to that index -- choose_cpu. However that's
  * a bit slower, and it doesn't seem like this potential race actually introduces
- * any performance loss, so we live with it. */
+ * any performance loss, so we live with it.
+ */
 static inline int cpumask_next_online(int *next)
 {
 	int cpu = *next;

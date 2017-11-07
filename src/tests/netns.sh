@@ -117,22 +117,22 @@ tests() {
 	# TCP over IPv4
 	n2 iperf3 -s -1 -B 192.168.241.2 &
 	waitiperf $netns2
-	n1 iperf3 -Z -n 1G -c 192.168.241.2
+	n1 iperf3 -Z -t 3 -c 192.168.241.2
 
 	# TCP over IPv6
 	n1 iperf3 -s -1 -B fd00::1 &
 	waitiperf $netns1
-	n2 iperf3 -Z -n 1G -c fd00::1
+	n2 iperf3 -Z -t 3 -c fd00::1
 
 	# UDP over IPv4
 	n1 iperf3 -s -1 -B 192.168.241.1 &
 	waitiperf $netns1
-	n2 iperf3 -Z -n 1G -b 0 -u -c 192.168.241.1
+	n2 iperf3 -Z -t 3 -b 0 -u -c 192.168.241.1
 
 	# UDP over IPv6
 	n2 iperf3 -s -1 -B fd00::2 &
 	waitiperf $netns2
-	n1 iperf3 -Z -n 1G -b 0 -u -c fd00::2
+	n1 iperf3 -Z -t 3 -b 0 -u -c fd00::2
 }
 
 [[ $(ip1 link show dev wg0) =~ mtu\ ([0-9]+) ]] && orig_mtu="${BASH_REMATCH[1]}"
@@ -144,7 +144,14 @@ n2 wg set wg0 peer "$pub1" endpoint 127.0.0.1:1
 # Before calling tests, we first make sure that the stats counters are working
 n2 ping -c 10 -f -W 1 192.168.241.1
 { read _; read _; read _; read rx_bytes _; read _; read tx_bytes _; } < <(ip2 -stats link show dev wg0)
-[[ $rx_bytes -ge 932 && $tx_bytes -ge 1516 && $rx_bytes -lt 2500 && $rx_bytes -lt 2500 ]]
+(( rx_bytes == 1372 && (tx_bytes == 1428 || tx_bytes == 1460) ))
+{ read _; read _; read _; read rx_bytes _; read _; read tx_bytes _; } < <(ip1 -stats link show dev wg0)
+(( tx_bytes == 1372 && (rx_bytes == 1428 || rx_bytes == 1460) ))
+read _ rx_bytes tx_bytes < <(n2 wg show wg0 transfer)
+(( rx_bytes == 1372 && (tx_bytes == 1428 || tx_bytes == 1460) ))
+read _ rx_bytes tx_bytes < <(n1 wg show wg0 transfer)
+(( tx_bytes == 1372 && (rx_bytes == 1428 || rx_bytes == 1460) ))
+
 tests
 ip1 link set wg0 mtu $big_mtu
 ip2 link set wg0 mtu $big_mtu
@@ -412,12 +419,10 @@ ip0 link del wg0
 ! n0 wg show doesnotexist || false
 
 declare -A objects
-n0 ncat -i 1 -l -p 1111 < /dev/kmsg &
-waitncattcp $netns0
-while read -r line; do
+while read -t 0.1 -r line 2>/dev/null || [[ $? -ne 142 ]]; do
 	[[ $line =~ .*(wg[0-9]+:\ [A-Z][a-z]+\ [0-9]+)\ .*(created|destroyed).* ]] || continue
 	objects["${BASH_REMATCH[1]}"]+="${BASH_REMATCH[2]}"
-done < <(n0 ncat -i 1 127.0.0.1 1111)
+done < /dev/kmsg
 alldeleted=1
 for object in "${!objects[@]}"; do
 	if [[ ${objects["$object"]} != *createddestroyed ]]; then

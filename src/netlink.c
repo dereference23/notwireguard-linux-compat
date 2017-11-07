@@ -199,14 +199,15 @@ static int get_device_dump(struct sk_buff *skb, struct netlink_callback *cb)
 	ret = 0;
 	/* If the last cursor was removed via list_del_init in peer_remove, then we just treat
 	 * this the same as there being no more peers left. The reason is that seq_nr should
-	 * indicate to userspace that this isn't a coherent dump anyway, so they'll try again. */
+	 * indicate to userspace that this isn't a coherent dump anyway, so they'll try again.
+	 */
 	if (list_empty(&wg->peer_list) || (last_peer_cursor && list_empty(&last_peer_cursor->peer_list))) {
 		nla_nest_cancel(skb, peers_nest);
 		goto out;
 	}
 	lockdep_assert_held(&wg->device_update_lock);
 	peer = list_prepare_entry(last_peer_cursor, &wg->peer_list, peer_list);
-	list_for_each_entry_continue (peer, &wg->peer_list, peer_list) {
+	list_for_each_entry_continue(peer, &wg->peer_list, peer_list) {
 		if (get_peer(peer, peer_idx++, rt_cursor, skb)) {
 			done = false;
 			break;
@@ -236,7 +237,8 @@ out:
 
 	/* At this point, we can't really deal ourselves with safely zeroing out
 	 * the private key material after usage. This will need an additional API
-	 * in the kernel for marking skbs as zero_on_free. */
+	 * in the kernel for marking skbs as zero_on_free.
+	 */
 }
 
 static int get_device_done(struct netlink_callback *cb)
@@ -254,13 +256,13 @@ static int get_device_done(struct netlink_callback *cb)
 
 static int set_port(struct wireguard_device *wg, u16 port)
 {
-	struct wireguard_peer *peer, *temp;
+	struct wireguard_peer *peer;
 
 	if (wg->incoming_port == port)
 		return 0;
 	socket_uninit(wg);
 	wg->incoming_port = port;
-	peer_for_each (wg, peer, temp, false)
+	list_for_each_entry(peer, &wg->peer_list, peer_list)
 		socket_clear_peer_endpoint_src(peer);
 	if (!netif_running(wg->dev))
 		return 0;
@@ -312,7 +314,8 @@ static int set_peer(struct wireguard_device *wg, struct nlattr **attrs)
 		down_read(&wg->static_identity.lock);
 		if (wg->static_identity.has_identity && !memcmp(nla_data(attrs[WGPEER_A_PUBLIC_KEY]), wg->static_identity.static_public, NOISE_PUBLIC_KEY_LEN)) {
 			/* We silently ignore peers that have the same public key as the device. The reason we do it silently
-			 * is that we'd like for people to be able to reuse the same set of API calls across peers. */
+			 * is that we'd like for people to be able to reuse the same set of API calls across peers.
+			 */
 			up_read(&wg->static_identity.lock);
 			ret = 0;
 			goto out;
@@ -340,8 +343,10 @@ static int set_peer(struct wireguard_device *wg, struct nlattr **attrs)
 	if (attrs[WGPEER_A_ENDPOINT]) {
 		struct sockaddr *addr = nla_data(attrs[WGPEER_A_ENDPOINT]);
 		size_t len = nla_len(attrs[WGPEER_A_ENDPOINT]);
+
 		if ((len == sizeof(struct sockaddr_in) && addr->sa_family == AF_INET) || (len == sizeof(struct sockaddr_in6) && addr->sa_family == AF_INET6)) {
 			struct endpoint endpoint = { { { 0 } } };
+
 			memcpy(&endpoint.addr, addr, len);
 			socket_set_peer_endpoint(peer, &endpoint);
 		}
@@ -353,7 +358,8 @@ static int set_peer(struct wireguard_device *wg, struct nlattr **attrs)
 	if (attrs[WGPEER_A_ALLOWEDIPS]) {
 		int rem;
 		struct nlattr *attr, *allowedip[WGALLOWEDIP_A_MAX + 1];
-		nla_for_each_nested (attr, attrs[WGPEER_A_ALLOWEDIPS], rem) {
+
+		nla_for_each_nested(attr, attrs[WGPEER_A_ALLOWEDIPS], rem) {
 			ret = nla_parse_nested(allowedip, WGALLOWEDIP_A_MAX, attr, allowedip_policy, NULL);
 			if (ret < 0)
 				goto out;
@@ -366,6 +372,7 @@ static int set_peer(struct wireguard_device *wg, struct nlattr **attrs)
 	if (attrs[WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL]) {
 		const u16 persistent_keepalive_interval = nla_get_u16(attrs[WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL]);
 		const bool send_keepalive = !peer->persistent_keepalive_interval && persistent_keepalive_interval && netif_running(wg->dev);
+
 		peer->persistent_keepalive_interval = (unsigned long)persistent_keepalive_interval * HZ;
 		if (send_keepalive)
 			packet_send_keepalive(peer);
@@ -396,9 +403,10 @@ static int set_device(struct sk_buff *skb, struct genl_info *info)
 	++wg->device_update_gen;
 
 	if (info->attrs[WGDEVICE_A_FWMARK]) {
-		struct wireguard_peer *peer, *temp;
+		struct wireguard_peer *peer;
+
 		wg->fwmark = nla_get_u32(info->attrs[WGDEVICE_A_FWMARK]);
-		peer_for_each (wg, peer, temp, false)
+		list_for_each_entry(peer, &wg->peer_list, peer_list)
 			socket_clear_peer_endpoint_src(peer);
 	}
 
@@ -415,14 +423,15 @@ static int set_device(struct sk_buff *skb, struct genl_info *info)
 		struct wireguard_peer *peer, *temp;
 		u8 public_key[NOISE_PUBLIC_KEY_LEN] = { 0 }, *private_key = nla_data(info->attrs[WGDEVICE_A_PRIVATE_KEY]);
 		/* We remove before setting, to prevent race, which means doing two 25519-genpub ops. */
-		bool unused __attribute((unused)) = curve25519_generate_public(public_key, private_key);
+		__attribute((unused)) bool unused = curve25519_generate_public(public_key, private_key);
+
 		peer = pubkey_hashtable_lookup(&wg->peer_hashtable, public_key);
 		if (peer) {
 			peer_put(peer);
 			peer_remove(peer);
 		}
 		noise_set_static_identity_private_key(&wg->static_identity, private_key);
-		peer_for_each (wg, peer, temp, false) {
+		list_for_each_entry_safe(peer, temp, &wg->peer_list, peer_list) {
 			if (!noise_precompute_static_static(peer))
 				peer_remove(peer);
 		}
@@ -432,7 +441,8 @@ static int set_device(struct sk_buff *skb, struct genl_info *info)
 	if (info->attrs[WGDEVICE_A_PEERS]) {
 		int rem;
 		struct nlattr *attr, *peer[WGPEER_A_MAX + 1];
-		nla_for_each_nested (attr, info->attrs[WGDEVICE_A_PEERS], rem) {
+
+		nla_for_each_nested(attr, info->attrs[WGDEVICE_A_PEERS], rem) {
 			ret = nla_parse_nested(peer, WGPEER_A_MAX, attr, peer_policy, NULL);
 			if (ret < 0)
 				goto out;
@@ -471,10 +481,13 @@ static const struct genl_ops genl_ops[] = {
 	}
 };
 
-static struct genl_family genl_family __ro_after_init = {
+static struct genl_family genl_family
 #ifndef COMPAT_CANNOT_USE_GENL_NOPS
+__ro_after_init = {
 	.ops = genl_ops,
 	.n_ops = ARRAY_SIZE(genl_ops),
+#else
+= {
 #endif
 	.name = WG_GENL_NAME,
 	.version = WG_GENL_VERSION,

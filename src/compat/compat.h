@@ -37,6 +37,7 @@
 #define headers_end data
 #endif
 
+#include <linux/cache.h>
 #ifndef __ro_after_init
 #define __ro_after_init __read_mostly
 #endif
@@ -161,7 +162,7 @@ static inline void netif_keep_dst(struct net_device *dev)
 	typeof(type) __percpu *pcpu_stats = alloc_percpu(type);		\
 	if (pcpu_stats)	{						\
 		int __cpu;						\
-		for_each_possible_cpu (__cpu) {				\
+		for_each_possible_cpu(__cpu) {				\
 			typeof(type) *stat;				\
 			stat = per_cpu_ptr(pcpu_stats, __cpu);		\
 			u64_stats_init(&stat->syncp);			\
@@ -474,6 +475,36 @@ static int get_device_dump_real(a, b)
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
 #define COMPAT_CANNOT_USE_IFF_NO_QUEUE
+#endif
+
+#if defined(CONFIG_X86_64)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#include <asm/user.h>
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
+#include <asm/xsave.h>
+#include <asm/xcr.h>
+static inline int cpu_has_xfeatures(u64 xfeatures_needed, const char **feature_name)
+{
+	return xgetbv(XCR_XFEATURE_ENABLED_MASK) & xfeatures_needed;
+}
+#endif
+#ifndef XFEATURE_MASK_YMM
+#define XFEATURE_MASK_YMM XSTATE_YMM
+#endif
+#ifndef XFEATURE_MASK_SSE
+#define XFEATURE_MASK_SSE XSTATE_SSE
+#endif
+#endif
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 11, 0)
+struct _____dummy_container { char dev; };
+#define netdev_notifier_info net_device *)data); __attribute((unused)) char _____dummy = ((struct _____dummy_container
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define timer_setup(a, b, c) setup_timer(a, ((void (*)(unsigned long))b), ((unsigned long)a))
+#define from_timer(var, callback_timer, timer_fieldname) container_of(callback_timer, typeof(*var), timer_fieldname)
 #endif
 
 /* https://lkml.org/lkml/2017/6/23/790 */

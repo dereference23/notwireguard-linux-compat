@@ -57,12 +57,12 @@ static void gc_entries(struct work_struct *work)
 
 	for (i = 0; i < table_size; ++i) {
 		spin_lock(&table_lock);
-		hlist_for_each_entry_safe (entry, temp, &table_v4[i], hash) {
+		hlist_for_each_entry_safe(entry, temp, &table_v4[i], hash) {
 			if (unlikely(!work) || now - entry->last_time_ns > NSEC_PER_SEC)
 				entry_uninit(entry);
 		}
 #if IS_ENABLED(CONFIG_IPV6)
-		hlist_for_each_entry_safe (entry, temp, &table_v6[i], hash) {
+		hlist_for_each_entry_safe(entry, temp, &table_v6[i], hash) {
 			if (unlikely(!work) || now - entry->last_time_ns > NSEC_PER_SEC)
 				entry_uninit(entry);
 		}
@@ -94,13 +94,14 @@ bool ratelimiter_allow(struct sk_buff *skb, struct net *net)
 	else
 		return false;
 	rcu_read_lock();
-	hlist_for_each_entry_rcu (entry, bucket, hash) {
+	hlist_for_each_entry_rcu(entry, bucket, hash) {
 		if (entry->net == net && entry->ip == data.ip) {
 			u64 now, tokens;
 			bool ret;
 			/* Inspired by nft_limit.c, but this is actually a slightly different
 			 * algorithm. Namely, we incorporate the burst as part of the maximum
-			 * tokens, rather than as part of the rate. */
+			 * tokens, rather than as part of the rate.
+			 */
 			spin_lock(&entry->lock);
 			now = ktime_get_ns();
 			tokens = min_t(u64, TOKEN_MAX, entry->tokens + now - entry->last_time_ns);
@@ -149,7 +150,8 @@ int ratelimiter_init(void)
 	/* xt_hashlimit.c uses a slightly different algorithm for ratelimiting,
 	 * but what it shares in common is that it uses a massive hashtable. So,
 	 * we borrow their wisdom about good table sizes on different systems
-	 * dependent on RAM. This calculation here comes from there. */
+	 * dependent on RAM. This calculation here comes from there.
+	 */
 	table_size = (totalram_pages > (1U << 30) / PAGE_SIZE) ? 8192 : max_t(unsigned long, 16, roundup_pow_of_two((totalram_pages << PAGE_SHIFT) / (1U << 14) / sizeof(struct hlist_head)));
 	max_entries = table_size * 8;
 

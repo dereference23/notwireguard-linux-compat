@@ -1,6 +1,7 @@
 /* Copyright (C) 2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  *
- * Original author: Jiri Pirko <jiri@mellanox.com> */
+ * Original author: Jiri Pirko <jiri@mellanox.com>
+ */
 
 #ifdef __linux__
 
@@ -18,14 +19,14 @@
 struct mnlg_socket {
 	struct mnl_socket *nl;
 	char *buf;
-	uint32_t id;
+	uint16_t id;
 	uint8_t version;
 	unsigned int seq;
 	unsigned int portid;
 };
 
 static struct nlmsghdr *__mnlg_msg_prepare(struct mnlg_socket *nlg, uint8_t cmd,
-					   uint16_t flags, uint32_t id,
+					   uint16_t flags, uint16_t id,
 					   uint8_t version)
 {
 	struct nlmsghdr *nlh;
@@ -113,7 +114,7 @@ int mnlg_socket_recv_run(struct mnlg_socket *nlg, mnl_cb_t data_cb, void *data)
 		if (err <= 0)
 			break;
 		err = mnl_cb_run2(nlg->buf, err, nlg->seq, nlg->portid,
-				  data_cb, data, mnlg_cb_array, sizeof(mnlg_cb_array) / sizeof(mnlg_cb_array[0]));
+				  data_cb, data, mnlg_cb_array, MNL_ARRAY_SIZE(mnlg_cb_array));
 	} while (err > 0);
 
 	return err;
@@ -205,7 +206,7 @@ int mnlg_socket_group_add(struct mnlg_socket *nlg, const char *group_name)
 
 	nlh = __mnlg_msg_prepare(nlg, CTRL_CMD_GETFAMILY,
 				 NLM_F_REQUEST | NLM_F_ACK, GENL_ID_CTRL, 1);
-	mnl_attr_put_u32(nlh, CTRL_ATTR_FAMILY_ID, nlg->id);
+	mnl_attr_put_u16(nlh, CTRL_ATTR_FAMILY_ID, nlg->id);
 
 	err = mnlg_socket_send(nlg, nlh);
 	if (err < 0)
@@ -247,7 +248,7 @@ static int get_family_id_attr_cb(const struct nlattr *attr, void *data)
 
 static int get_family_id_cb(const struct nlmsghdr *nlh, void *data)
 {
-	uint32_t *p_id = data;
+	uint16_t *p_id = data;
 	struct nlattr *tb[CTRL_ATTR_MAX + 1] = { 0 };
 
 	mnl_attr_parse(nlh, sizeof(struct genlmsghdr), get_family_id_attr_cb, tb);

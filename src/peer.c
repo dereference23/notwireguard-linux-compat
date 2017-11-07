@@ -20,8 +20,9 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 
 	lockdep_assert_held(&wg->device_update_lock);
 
-	if (peer_total_count(wg) >= MAX_PEERS_PER_DEVICE)
+	if (wg->num_peers >= MAX_PEERS_PER_DEVICE)
 		return NULL;
+	++wg->num_peers;
 
 	peer = kzalloc(sizeof(struct wireguard_peer), GFP_KERNEL);
 	if (!peer)
@@ -51,13 +52,13 @@ struct wireguard_peer *peer_create(struct wireguard_device *wg, const u8 public_
 	skb_queue_head_init(&peer->staged_packet_queue);
 	list_add_tail(&peer->peer_list, &wg->peer_list);
 	pubkey_hashtable_add(&wg->peer_hashtable, peer);
-	pr_debug("%s: Peer %Lu created\n", wg->dev->name, peer->internal_id);
+	pr_debug("%s: Peer %llu created\n", wg->dev->name, peer->internal_id);
 	return peer;
 }
 
 struct wireguard_peer *peer_get(struct wireguard_peer *peer)
 {
-	RCU_LOCKDEP_WARN(!rcu_read_lock_bh_held(), "Calling peer_get without holding the RCU read lock");
+	RCU_LOCKDEP_WARN(!rcu_read_lock_bh_held(), "Calling " __func__ " without holding the RCU read lock");
 	if (unlikely(!peer || !kref_get_unless_zero(&peer->refcount)))
 		return NULL;
 	return peer;
@@ -73,7 +74,8 @@ struct wireguard_peer *peer_rcu_get(struct wireguard_peer *peer)
 
 /* We have a separate "remove" function to get rid of the final reference because
  * peer_list, clearing handshakes, and flushing all require mutexes which requires
- * sleeping, which must only be done from certain contexts. */
+ * sleeping, which must only be done from certain contexts.
+ */
 void peer_remove(struct wireguard_peer *peer)
 {
 	if (unlikely(!peer))
@@ -89,13 +91,15 @@ void peer_remove(struct wireguard_peer *peer)
 	flush_workqueue(peer->device->packet_crypt_wq); /* The first flush is for encrypt/decrypt step. */
 	flush_workqueue(peer->device->packet_crypt_wq); /* The second flush is for send/receive step. */
 	flush_workqueue(peer->device->handshake_send_wq);
+	--peer->device->num_peers;
 	peer_put(peer);
 }
 
 static void rcu_release(struct rcu_head *rcu)
 {
 	struct wireguard_peer *peer = container_of(rcu, struct wireguard_peer, rcu);
-	pr_debug("%s: Peer %Lu (%pISpfsc) destroyed\n", peer->device->dev->name, peer->internal_id, &peer->endpoint.addr);
+
+	pr_debug("%s: Peer %llu (%pISpfsc) destroyed\n", peer->device->dev->name, peer->internal_id, &peer->endpoint.addr);
 	dst_cache_destroy(&peer->endpoint_cache);
 	packet_queue_free(&peer->rx_queue, false);
 	packet_queue_free(&peer->tx_queue, false);
@@ -123,17 +127,6 @@ void peer_remove_all(struct wireguard_device *wg)
 	struct wireguard_peer *peer, *temp;
 
 	lockdep_assert_held(&wg->device_update_lock);
-	list_for_each_entry_safe (peer, temp, &wg->peer_list, peer_list)
+	list_for_each_entry_safe(peer, temp, &wg->peer_list, peer_list)
 		peer_remove(peer);
-}
-
-unsigned int peer_total_count(struct wireguard_device *wg)
-{
-	unsigned int i = 0;
-	struct wireguard_peer *peer;
-
-	lockdep_assert_held(&wg->device_update_lock);
-	list_for_each_entry (peer, &wg->peer_list, peer_list)
-		++i;
-	return i;
 }

@@ -173,6 +173,7 @@ int socket_send_buffer_to_peer(struct wireguard_peer *peer, void *buffer, size_t
 		return -ENOMEM;
 
 	skb_reserve(skb, SKB_HEADER_LEN);
+	skb_set_inner_network_header(skb, 0);
 	memcpy(skb_put(skb, len), buffer, len);
 	return socket_send_skb_to_peer(peer, skb, ds);
 }
@@ -193,6 +194,7 @@ int socket_send_buffer_as_reply_to_skb(struct wireguard_device *wg, struct sk_bu
 	if (unlikely(!skb))
 		return -ENOMEM;
 	skb_reserve(skb, SKB_HEADER_LEN);
+	skb_set_inner_network_header(skb, 0);
 	memcpy(skb_put(skb, len), out_buffer, len);
 
 	if (endpoint.addr.sa_family == AF_INET)
@@ -240,7 +242,8 @@ void socket_set_peer_endpoint(struct wireguard_peer *peer, const struct endpoint
 	/* First we check unlocked, in order to optimize, since it's pretty rare
 	 * that an endpoint will change. If we happen to be mid-write, and two
 	 * CPUs wind up writing the same thing or something slightly different,
-	 * it doesn't really matter much either. */
+	 * it doesn't really matter much either.
+	 */
 	if (endpoint_eq(endpoint, &peer->endpoint))
 		return;
 	write_lock_bh(&peer->endpoint_lock);
@@ -261,6 +264,7 @@ out:
 void socket_set_peer_endpoint_from_skb(struct wireguard_peer *peer, const struct sk_buff *skb)
 {
 	struct endpoint endpoint;
+
 	if (!socket_endpoint_from_skb(&endpoint, skb))
 		socket_set_peer_endpoint(peer, &endpoint);
 }

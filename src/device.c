@@ -26,7 +26,7 @@ static LIST_HEAD(device_list);
 static int open(struct net_device *dev)
 {
 	int ret;
-	struct wireguard_peer *peer, *temp;
+	struct wireguard_peer *peer;
 	struct wireguard_device *wg = netdev_priv(dev);
 #ifndef COMPAT_CANNOT_USE_IN6_DEV_GET
 	struct inet6_dev *dev_v6 = __in6_dev_get(dev);
@@ -37,7 +37,8 @@ static int open(struct net_device *dev)
 		/* TODO: when we merge to mainline, put this check near the ip_rt_send_redirect
 		 * call of ip_forward in net/ipv4/ip_forward.c, similar to the current secpath
 		 * check, rather than turning it off like this. This is just a stop gap solution
-		 * while we're an out of tree module. */
+		 * while we're an out of tree module.
+		 */
 		IN_DEV_CONF_SET(dev_v4, SEND_REDIRECTS, false);
 		IPV4_DEVCONF_ALL(dev_net(dev), SEND_REDIRECTS) = false;
 	}
@@ -53,50 +54,56 @@ static int open(struct net_device *dev)
 	ret = socket_init(wg);
 	if (ret < 0)
 		return ret;
-	peer_for_each (wg, peer, temp, true) {
+	mutex_lock(&wg->device_update_lock);
+	list_for_each_entry(peer, &wg->peer_list, peer_list) {
 		packet_send_staged_packets(peer);
 		if (peer->persistent_keepalive_interval)
 			packet_send_keepalive(peer);
 	}
+	mutex_unlock(&wg->device_update_lock);
 	return 0;
 }
 
 #ifdef CONFIG_PM_SLEEP
-static int suspending_clear_noise_peers(struct notifier_block *nb, unsigned long action, void *data)
+static int pm_notification(struct notifier_block *nb, unsigned long action, void *data)
 {
 	struct wireguard_device *wg;
-	struct wireguard_peer *peer, *temp;
+	struct wireguard_peer *peer;
 
 	if (action != PM_HIBERNATION_PREPARE && action != PM_SUSPEND_PREPARE)
 		return 0;
 
 	rtnl_lock();
-	list_for_each_entry (wg, &device_list, device_list) {
-		peer_for_each (wg, peer, temp, true) {
+	list_for_each_entry(wg, &device_list, device_list) {
+		mutex_lock(&wg->device_update_lock);
+		list_for_each_entry(peer, &wg->peer_list, peer_list) {
 			noise_handshake_clear(&peer->handshake);
 			noise_keypairs_clear(&peer->keypairs);
 			if (peer->timers_enabled)
 				del_timer(&peer->timer_zero_key_material);
 		}
+		mutex_unlock(&wg->device_update_lock);
 	}
 	rtnl_unlock();
 	rcu_barrier_bh();
 	return 0;
 }
-static struct notifier_block clear_peers_on_suspend = { .notifier_call = suspending_clear_noise_peers };
+static struct notifier_block pm_notifier = { .notifier_call = pm_notification };
 #endif
 
 static int stop(struct net_device *dev)
 {
 	struct wireguard_device *wg = netdev_priv(dev);
-	struct wireguard_peer *peer, *temp;
+	struct wireguard_peer *peer;
 
-	peer_for_each (wg, peer, temp, true) {
+	mutex_lock(&wg->device_update_lock);
+	list_for_each_entry(peer, &wg->peer_list, peer_list) {
 		skb_queue_purge(&peer->staged_packet_queue);
 		timers_stop(peer);
 		noise_handshake_clear(&peer->handshake);
 		noise_keypairs_clear(&peer->keypairs);
 	}
+	mutex_unlock(&wg->device_update_lock);
 	skb_queue_purge(&wg->incoming_handshakes);
 	socket_uninit(wg);
 	return 0;
@@ -127,7 +134,7 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 	family = READ_ONCE(peer->endpoint.addr.sa_family);
 	if (unlikely(family != AF_INET && family != AF_INET6)) {
 		ret = -EDESTADDRREQ;
-		net_dbg_ratelimited("%s: No valid endpoint has been configured or discovered for peer %Lu\n", dev->name, peer->internal_id);
+		net_dbg_ratelimited("%s: No valid endpoint has been configured or discovered for peer %llu\n", dev->name, peer->internal_id);
 		goto err_peer;
 	}
 
@@ -136,6 +143,7 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 		skb->next = NULL;
 	else {
 		struct sk_buff *segs = skb_gso_segment(skb, 0);
+
 		if (unlikely(IS_ERR(segs))) {
 			ret = PTR_ERR(segs);
 			goto err_peer;
@@ -152,7 +160,8 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 			continue;
 
 		/* We only need to keep the original dst around for icmp,
-		 * so at this point we're in a position to drop it. */
+		 * so at this point we're in a position to drop it.
+		 */
 		skb_dst_drop(skb);
 
 		__skb_queue_tail(&packets, skb);
@@ -160,7 +169,8 @@ static netdev_tx_t xmit(struct sk_buff *skb, struct net_device *dev)
 
 	spin_lock_bh(&peer->staged_packet_queue.lock);
 	/* If the queue is getting too big, we start removing the oldest packets until it's small again.
-	 * We do this before adding the new packet, so we don't remove GSO segments that are in excess. */
+	 * We do this before adding the new packet, so we don't remove GSO segments that are in excess.
+	 */
 	while (skb_queue_len(&peer->staged_packet_queue) > MAX_STAGED_PACKETS)
 		dev_kfree_skb(__skb_dequeue(&peer->staged_packet_queue));
 	skb_queue_splice_tail(&packets, &peer->staged_packet_queue);
@@ -194,10 +204,10 @@ static void destruct(struct net_device *dev)
 {
 	struct wireguard_device *wg = netdev_priv(dev);
 
+	mutex_lock(&wg->device_update_lock);
 	rtnl_lock();
 	list_del(&wg->device_list);
 	rtnl_unlock();
-	mutex_lock(&wg->device_update_lock);
 	peer_remove_all(wg); /* The final references are cleared in the below calls to destroy_workqueue. */
 	wg->incoming_port = 0;
 	destroy_workqueue(wg->handshake_receive_wq);
@@ -210,10 +220,11 @@ static void destruct(struct net_device *dev)
 	memzero_explicit(&wg->static_identity, sizeof(struct noise_static_identity));
 	skb_queue_purge(&wg->incoming_handshakes);
 	socket_uninit(wg);
-	mutex_unlock(&wg->device_update_lock);
 	free_percpu(dev->tstats);
 	free_percpu(wg->incoming_handshakes_worker);
-	put_net(wg->creating_net);
+	if (wg->have_creating_net_ref)
+		put_net(wg->creating_net);
+	mutex_unlock(&wg->device_update_lock);
 
 	pr_debug("%s: Interface deleted\n", dev->name);
 	free_netdev(dev);
@@ -254,7 +265,7 @@ static int newlink(struct net *src_net, struct net_device *dev, struct nlattr *t
 	int ret = -ENOMEM;
 	struct wireguard_device *wg = netdev_priv(dev);
 
-	wg->creating_net = get_net(src_net);
+	wg->creating_net = src_net;
 	init_rwsem(&wg->static_identity.lock);
 	mutex_init(&wg->socket_update_lock);
 	mutex_init(&wg->device_update_lock);
@@ -303,7 +314,8 @@ static int newlink(struct net *src_net, struct net_device *dev, struct nlattr *t
 	list_add(&wg->device_list, &device_list);
 
 	/* We wait until the end to assign priv_destructor, so that register_netdevice doesn't
-	 * call it for us if it fails. */
+	 * call it for us if it fails.
+	 */
 	dev->priv_destructor = destruct;
 
 	pr_debug("%s: Interface created\n", dev->name);
@@ -326,7 +338,6 @@ error_3:
 error_2:
 	free_percpu(dev->tstats);
 error_1:
-	put_net(src_net);
 	return ret;
 }
 
@@ -337,22 +348,63 @@ static struct rtnl_link_ops link_ops __read_mostly = {
 	.newlink		= newlink,
 };
 
+static int netdevice_notification(struct notifier_block *nb, unsigned long action, void *data)
+{
+	struct net_device *dev = ((struct netdev_notifier_info *)data)->dev;
+	struct wireguard_device *wg = netdev_priv(dev);
+
+	ASSERT_RTNL();
+
+	if (action != NETDEV_REGISTER || dev->netdev_ops != &netdev_ops)
+		return 0;
+
+	if (dev_net(dev) == wg->creating_net && wg->have_creating_net_ref) {
+		put_net(wg->creating_net);
+		wg->have_creating_net_ref = false;
+	} else if (dev_net(dev) != wg->creating_net && !wg->have_creating_net_ref) {
+		wg->have_creating_net_ref = true;
+		get_net(wg->creating_net);
+	}
+	return 0;
+}
+
+static struct notifier_block netdevice_notifier = { .notifier_call = netdevice_notification };
+
 int __init device_init(void)
 {
-#ifdef CONFIG_PM_SLEEP
-	int ret = register_pm_notifier(&clear_peers_on_suspend);
+	int ret;
 
+#ifdef CONFIG_PM_SLEEP
+	ret = register_pm_notifier(&pm_notifier);
 	if (ret)
 		return ret;
 #endif
-	return rtnl_link_register(&link_ops);
+
+	ret = register_netdevice_notifier(&netdevice_notifier);
+	if (ret)
+		goto error_pm;
+
+	ret = rtnl_link_register(&link_ops);
+	if (ret)
+		goto error_netdevice;
+
+	return 0;
+
+error_netdevice:
+	unregister_netdevice_notifier(&netdevice_notifier);
+error_pm:
+#ifdef CONFIG_PM_SLEEP
+	unregister_pm_notifier(&pm_notifier);
+#endif
+	return ret;
 }
 
 void device_uninit(void)
 {
 	rtnl_link_unregister(&link_ops);
+	unregister_netdevice_notifier(&netdevice_notifier);
 #ifdef CONFIG_PM_SLEEP
-	unregister_pm_notifier(&clear_peers_on_suspend);
+	unregister_pm_notifier(&pm_notifier);
 #endif
 	rcu_barrier_bh();
 }

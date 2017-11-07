@@ -7,7 +7,8 @@
 static inline struct hlist_head *pubkey_bucket(struct pubkey_hashtable *table, const u8 pubkey[NOISE_PUBLIC_KEY_LEN])
 {
 	/* siphash gives us a secure 64bit number based on a random key. Since the bits are
-	 * uniformly distributed, we can then mask off to get the bits we need. */
+	 * uniformly distributed, we can then mask off to get the bits we need.
+	 */
 	return &table->hashtable[siphash(pubkey, NOISE_PUBLIC_KEY_LEN, &table->key) & (HASH_SIZE(table->hashtable) - 1)];
 }
 
@@ -38,7 +39,7 @@ struct wireguard_peer *pubkey_hashtable_lookup(struct pubkey_hashtable *table, c
 	struct wireguard_peer *iter_peer, *peer = NULL;
 
 	rcu_read_lock_bh();
-	hlist_for_each_entry_rcu_bh (iter_peer, pubkey_bucket(table, pubkey), pubkey_hash) {
+	hlist_for_each_entry_rcu_bh(iter_peer, pubkey_bucket(table, pubkey), pubkey_hash) {
 		if (!memcmp(pubkey, iter_peer->handshake.remote_static, NOISE_PUBLIC_KEY_LEN)) {
 			peer = iter_peer;
 			break;
@@ -52,7 +53,8 @@ struct wireguard_peer *pubkey_hashtable_lookup(struct pubkey_hashtable *table, c
 static inline struct hlist_head *index_bucket(struct index_hashtable *table, const __le32 index)
 {
 	/* Since the indices are random and thus all bits are uniformly distributed,
-	 * we can find its bucket simply by masking. */
+	 * we can find its bucket simply by masking.
+	 */
 	return &table->hashtable[(__force u32)index & (HASH_SIZE(table->hashtable) - 1)];
 }
 
@@ -68,7 +70,7 @@ void index_hashtable_init(struct index_hashtable *table)
  *
  * >>> def calculation(tries, size):
  * ...     return (size / 2**32)**(tries - 1) *  (1 - (size / 2**32))
- * ... 
+ * ...
  * >>> calculation(1, 2**20 * 3)
  * 0.999267578125
  * >>> calculation(2, 2**20 * 3)
@@ -97,15 +99,16 @@ __le32 index_hashtable_insert(struct index_hashtable *table, struct index_hashta
 search_unused_slot:
 	/* First we try to find an unused slot, randomly, while unlocked. */
 	entry->index = (__force __le32)get_random_u32();
-	hlist_for_each_entry_rcu_bh (existing_entry, index_bucket(table, entry->index), index_hash) {
+	hlist_for_each_entry_rcu_bh(existing_entry, index_bucket(table, entry->index), index_hash) {
 		if (existing_entry->index == entry->index)
 			goto search_unused_slot; /* If it's already in use, we continue searching. */
 	}
 
 	/* Once we've found an unused slot, we lock it, and then double-check
-	 * that nobody else stole it from us. */
+	 * that nobody else stole it from us.
+	 */
 	spin_lock_bh(&table->lock);
-	hlist_for_each_entry_rcu_bh (existing_entry, index_bucket(table, entry->index), index_hash) {
+	hlist_for_each_entry_rcu_bh(existing_entry, index_bucket(table, entry->index), index_hash) {
 		if (existing_entry->index == entry->index) {
 			spin_unlock_bh(&table->lock);
 			goto search_unused_slot; /* If it was stolen, we start over. */
@@ -145,7 +148,7 @@ struct index_hashtable_entry *index_hashtable_lookup(struct index_hashtable *tab
 	struct index_hashtable_entry *iter_entry, *entry = NULL;
 
 	rcu_read_lock_bh();
-	hlist_for_each_entry_rcu_bh (iter_entry, index_bucket(table, index), index_hash) {
+	hlist_for_each_entry_rcu_bh(iter_entry, index_bucket(table, index), index_hash) {
 		if (iter_entry->index == index) {
 			if (likely(iter_entry->type & type_mask))
 				entry = iter_entry;

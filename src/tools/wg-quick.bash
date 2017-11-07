@@ -15,10 +15,10 @@ INTERFACE=""
 ADDRESSES=( )
 MTU=""
 DNS=( )
-PRE_UP=""
-POST_UP=""
-PRE_DOWN=""
-POST_DOWN=""
+PRE_UP=( )
+POST_UP=( )
+PRE_DOWN=( )
+POST_DOWN=( )
 SAVE_CONFIG=0
 CONFIG_FILE=""
 PROGRAM="${0##*/}"
@@ -43,10 +43,10 @@ parse_options() {
 			Address) ADDRESSES+=( ${value//,/ } ); continue ;;
 			MTU) MTU="$value"; continue ;;
 			DNS) DNS+=( ${value//,/ } ); continue ;;
-			PreUp) PRE_UP="$value"; continue ;;
-			PreDown) PRE_DOWN="$value"; continue ;;
-			PostUp) POST_UP="$value"; continue ;;
-			PostDown) POST_DOWN="$value"; continue ;;
+			PreUp) PRE_UP+=( "$value" ); continue ;;
+			PreDown) PRE_DOWN+=( "$value" ); continue ;;
+			PostUp) POST_UP+=( "$value" ); continue ;;
+			PostDown) POST_DOWN+=( "$value" ); continue ;;
 			SaveConfig) read_bool SAVE_CONFIG "$value"; continue ;;
 			esac
 		fi
@@ -83,6 +83,7 @@ add_if() {
 
 del_if() {
 	local fwmark
+	[[ $HAVE_SET_DNS -eq 0 ]] || unset_dns
 	fwmark="$(wg show "$INTERFACE" fwmark)"
 	DEFAULT_TABLE=0
 	[[ $fwmark != off ]] && DEFAULT_TABLE=$(( fwmark ))
@@ -130,12 +131,16 @@ set_mtu() {
 	cmd ip link set mtu $(( mtu - 80 )) dev "$INTERFACE"
 }
 
+HAVE_SET_DNS=0
 set_dns() {
-	[[ ${#DNS[@]} -eq 0 ]] || printf 'nameserver %s\n' "${DNS[@]}" | cmd resolvconf -a "tun.$INTERFACE" -m 0 -x
+	[[ ${#DNS[@]} -gt 0 ]] || return 0
+	printf 'nameserver %s\n' "${DNS[@]}" | cmd resolvconf -a "tun.$INTERFACE" -m 0 -x
+	HAVE_SET_DNS=1
 }
 
 unset_dns() {
-	[[ ${#DNS[@]} -eq 0 ]] || cmd resolvconf -d "tun.$INTERFACE"
+	[[ ${#DNS[@]} -gt 0 ]] || return 0
+	cmd resolvconf -d "tun.$INTERFACE"
 }
 
 add_route() {
@@ -172,7 +177,7 @@ set_config() {
 }
 
 save_config() {
-	local old_umask new_config current_config address
+	local old_umask new_config current_config address cmd
 	[[ $(ip -all -brief address show dev "$INTERFACE") =~ ^$INTERFACE\ +\ [A-Z]+\ +(.+)$ ]] || true
 	new_config=$'[Interface]\n'
 	for address in ${BASH_REMATCH[1]}; do
@@ -183,30 +188,41 @@ save_config() {
 	done < <(resolvconf -l "tun.$INTERFACE" 2>/dev/null)
 	[[ -n $MTU && $(ip link show dev "$INTERFACE") =~ mtu\ ([0-9]+) ]] && new_config+="MTU = ${BASH_REMATCH[1]}"$'\n'
 	[[ $SAVE_CONFIG -eq 0 ]] || new_config+=$'SaveConfig = true\n'
-	[[ -z $PRE_UP ]] || new_config+="PreUp = $PRE_UP"$'\n'
-	[[ -z $POST_UP ]] || new_config+="PostUp = $POST_UP"$'\n'
-	[[ -z $PRE_DOWN ]] || new_config+="PreDown = $PRE_DOWN"$'\n'
-	[[ -z $POST_DOWN ]] || new_config+="PostDown = $POST_DOWN"$'\n'
+	for cmd in "${PRE_UP[@]}"; do
+		new_config+="PreUp = $cmd"$'\n'
+	done
+	for cmd in "${POST_UP[@]}"; do
+		new_config+="PostUp = $cmd"$'\n'
+	done
+	for cmd in "${PRE_DOWN[@]}"; do
+		new_config+="PreDown = $cmd"$'\n'
+	done
+	for cmd in "${POST_DOWN[@]}"; do
+		new_config+="PostDown = $cmd"$'\n'
+	done
 	old_umask="$(umask)"
 	umask 077
 	current_config="$(cmd wg showconf "$INTERFACE")"
 	trap 'rm -f "$CONFIG_FILE.tmp"; exit' INT TERM EXIT
 	echo "${current_config/\[Interface\]$'\n'/$new_config}" > "$CONFIG_FILE.tmp" || die "Could not write configuration file"
+	sync "$CONFIG_FILE.tmp"
 	mv "$CONFIG_FILE.tmp" "$CONFIG_FILE" || die "Could not move configuration file"
 	trap - INT TERM EXIT
 	umask "$old_umask"
 }
 
-execute_hook() {
-	[[ -n $1 ]] || return 0
-	local hook="${1//%i/$INTERFACE}"
-	echo "[#] $hook" >&2
-	(eval "$hook")
+execute_hooks() {
+	local hook
+	for hook in "$@"; do
+		hook="${hook//%i/$INTERFACE}"
+		echo "[#] $hook" >&2
+		(eval "$hook")
+	done
 }
 
 cmd_usage() {
 	cat >&2 <<-_EOF
-	Usage: $PROGRAM [ up | down ] [ CONFIG_FILE | INTERFACE ]
+	Usage: $PROGRAM [ up | down | save ] [ CONFIG_FILE | INTERFACE ]
 
 	  CONFIG_FILE is a configuration file, whose filename is the interface name
 	  followed by \`.conf'. Otherwise, INTERFACE is an interface name, with
@@ -232,7 +248,7 @@ cmd_up() {
 	local i
 	[[ -z $(ip link show dev "$INTERFACE" 2>/dev/null) ]] || die "\`$INTERFACE' already exists"
 	trap 'del_if; exit' INT TERM EXIT
-	execute_hook "$PRE_UP"
+	execute_hooks "${PRE_UP[@]}"
 	add_if
 	set_config
 	for i in "${ADDRESSES[@]}"; do
@@ -244,18 +260,25 @@ cmd_up() {
 	for i in $(while read -r _ i; do for i in $i; do [[ $i =~ ^[0-9a-z:.]+/[0-9]+$ ]] && echo "$i"; done; done < <(wg show "$INTERFACE" allowed-ips) | sort -nr -k 2 -t /); do
 		[[ $(ip route get "$i" 2>/dev/null) == *dev\ $INTERFACE\ * ]] || add_route "$i"
 	done
-	execute_hook "$POST_UP"
+	execute_hooks "${POST_UP[@]}"
 	trap - INT TERM EXIT
 }
 
 cmd_down() {
 	[[ " $(wg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a WireGuard interface"
-	execute_hook "$PRE_DOWN"
+	execute_hooks "${PRE_DOWN[@]}"
 	[[ $SAVE_CONFIG -eq 0 ]] || save_config
-	unset_dns
 	del_if
-	execute_hook "$POST_DOWN"
+	unset_dns
+	execute_hooks "${POST_DOWN[@]}"
 }
+
+cmd_save() {
+	[[ " $(wg show interfaces) " == *" $INTERFACE "* ]] || die "\`$INTERFACE' is not a WireGuard interface"
+	save_config
+}
+
+# ~~ function override insertion point ~~
 
 if [[ $# -eq 1 && ( $1 == --help || $1 == -h || $1 == help ) ]]; then
 	cmd_usage
@@ -267,6 +290,10 @@ elif [[ $# -eq 2 && $1 == down ]]; then
 	auto_su
 	parse_options "$2"
 	cmd_down
+elif [[ $# -eq 2 && $1 == save ]]; then
+	auto_su
+	parse_options "$2"
+	cmd_save
 else
 	cmd_usage
 	exit 1
