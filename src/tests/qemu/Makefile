@@ -10,7 +10,7 @@ endif
 ARCH := $(firstword $(subst -, ,$(CBUILD)))
 
 # Set these from the environment to override
-KERNEL_VERSION ?= 4.13.9
+KERNEL_VERSION ?= 4.13.12
 BUILD_PATH ?= $(PWD)/../../../qemu-build/$(ARCH)
 DISTFILES_PATH ?= $(PWD)/distfiles
 DEBUG_KERNEL ?= no
@@ -169,7 +169,7 @@ qemu: $(KERNEL_BZIMAGE)
 		-nographic \
 		-smp $(NR_CPUS) \
 		$(QEMU_MACHINE) \
-		-m 192M \
+		-m $$(grep -q CONFIG_DEBUG_KMEMLEAK=y $(KERNEL_PATH)/.config && echo 1G || echo 192M) \
 		-serial stdio \
 		-serial file:$(BUILD_PATH)/result \
 		-no-reboot \
