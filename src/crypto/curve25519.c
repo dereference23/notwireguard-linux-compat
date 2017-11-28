@@ -31,7 +31,7 @@ static const u8 null_point[CURVE25519_POINT_SIZE] = { 0 };
 #include <asm/fpu/api.h>
 #include <asm/simd.h>
 static bool curve25519_use_avx __read_mostly;
-void curve25519_fpu_init(void)
+void __init curve25519_fpu_init(void)
 {
 	curve25519_use_avx = boot_cpu_has(X86_FEATURE_AVX) && cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM, NULL);
 }
@@ -192,11 +192,11 @@ static void curve25519_sandy2x_base(u8 pub[CURVE25519_POINT_SIZE], const u8 secr
 	memzero_explicit(x_51, sizeof(x_51));
 	memzero_explicit(z_51, sizeof(z_51));
 }
-#elif IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM) && !defined(CONFIG_CPU_THUMBONLY)
+#elif IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
 #include <asm/hwcap.h>
 #include <asm/neon.h>
 #include <asm/simd.h>
-asmlinkage void curve25519_asm_neon(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE], const u8 basepoint[CURVE25519_POINT_SIZE]);
+asmlinkage void curve25519_neon(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE], const u8 basepoint[CURVE25519_POINT_SIZE]);
 static bool curve25519_use_neon __read_mostly;
 void __init curve25519_fpu_init(void)
 {
@@ -1470,10 +1470,10 @@ static void cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q)
 
 bool curve25519(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE], const u8 basepoint[CURVE25519_POINT_SIZE])
 {
-#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM) && !defined(CONFIG_CPU_THUMBONLY)
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
 	if (curve25519_use_neon && may_use_simd()) {
 		kernel_neon_begin();
-		curve25519_asm_neon(mypublic, secret, basepoint);
+		curve25519_neon(mypublic, secret, basepoint);
 		kernel_neon_end();
 	} else
 #endif
@@ -1649,10 +1649,10 @@ static void cmult(struct other_stack *s, limb *resultx, limb *resultz, const u8 
 
 bool curve25519(u8 mypublic[CURVE25519_POINT_SIZE], const u8 secret[CURVE25519_POINT_SIZE], const u8 basepoint[CURVE25519_POINT_SIZE])
 {
-#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM) && !defined(CONFIG_CPU_THUMBONLY)
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && defined(CONFIG_ARM)
 	if (curve25519_use_neon && may_use_simd()) {
 		kernel_neon_begin();
-		curve25519_asm_neon(mypublic, secret, basepoint);
+		curve25519_neon(mypublic, secret, basepoint);
 		kernel_neon_end();
 	} else
 #endif

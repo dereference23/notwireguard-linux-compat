@@ -83,25 +83,79 @@ static inline bool parse_fwmark(uint32_t *fwmark, uint32_t *flags, const char *v
 		return true;
 	}
 
-	if (value[0] == '0' && value[1] == 'x') {
-		value += 2;
+	if (!isdigit(value[0]))
+		goto err;
+
+	if (strlen(value) > 2 && value[0] == '0' && value[1] == 'x')
 		base = 16;
-	}
+
 	ret = strtoul(value, &end, base);
-	if (!*value || *end || ret > UINT32_MAX)
-		return false;
+	if (*end || ret > UINT32_MAX)
+		goto err;
+
 	*fwmark = ret;
 	*flags |= WGDEVICE_HAS_FWMARK;
 	return true;
+err:
+	fprintf(stderr, "Fwmark is neither 0/off nor 0-0xffffffff: `%s'\n", value);
+	return false;
 }
 
 static inline bool parse_key(uint8_t key[static WG_KEY_LEN], const char *value)
 {
 	if (!key_from_base64(key, value)) {
 		fprintf(stderr, "Key is not the correct length or format: `%s'\n", value);
+		memset(key, 0, WG_KEY_LEN);
 		return false;
 	}
 	return true;
+}
+
+static bool parse_keyfile(uint8_t key[static WG_KEY_LEN], const char *path)
+{
+	FILE *f;
+	int c;
+	char dst[WG_KEY_LEN_BASE64];
+	bool ret = false;
+
+	f = fopen(path, "r");
+	if (!f) {
+		perror("fopen");
+		return false;
+	}
+
+	if (fread(dst, WG_KEY_LEN_BASE64 - 1, 1, f) != 1) {
+		if (errno) {
+			perror("fread");
+			goto out;
+		}
+		/* If we're at the end and we didn't read anything, we're /dev/null or an empty file. */
+		if (!ferror(f) && feof(f) && !ftell(f)) {
+			memset(key, 0, WG_KEY_LEN);
+			ret = true;
+			goto out;
+		}
+
+		fprintf(stderr, "Invalid length key in key file\n");
+		goto out;
+	}
+	dst[WG_KEY_LEN_BASE64 - 1] = '\0';
+
+	while ((c = getc(f)) != EOF) {
+		if (!isspace(c)) {
+			fprintf(stderr, "Found trailing character in key file: `%c'\n", c);
+			goto out;
+		}
+	}
+	if (ferror(f) && errno) {
+		perror("getc");
+		goto out;
+	}
+	ret = parse_key(key, dst);
+
+out:
+	fclose(f);
+	return ret;
 }
 
 static inline bool parse_ip(struct wgallowedip *allowedip, const char *value)
@@ -206,22 +260,26 @@ static inline bool parse_persistent_keepalive(uint16_t *interval, uint32_t *flag
 		return true;
 	}
 
+	if (!isdigit(value[0]))
+		goto err;
+
 	ret = strtoul(value, &end, 10);
-	if (!*value || *value == '-' || *end || ret > 65535) {
-		fprintf(stderr, "The persistent keepalive interval must be 0/off or 1-65535. Found: `%s'\n", value);
-		return false;
-	}
+	if (*end || ret > 65535)
+		goto err;
 
 	*interval = (uint16_t)ret;
 	*flags |= WGPEER_HAS_PERSISTENT_KEEPALIVE_INTERVAL;
 	return true;
+err:
+	fprintf(stderr, "Persistent keepalive interval is neither 0/off nor 1-65535: `%s'\n", value);
+	return false;
 }
 
 
 static inline bool parse_allowedips(struct wgpeer *peer, struct wgallowedip **last_allowedip, const char *value)
 {
 	struct wgallowedip *allowedip = *last_allowedip, *new_allowedip;
-	char *mask, *mutable = strdup(value), *sep;
+	char *mask, *mutable = strdup(value), *sep, *saved_entry;
 
 	if (!mutable) {
 		perror("strdup");
@@ -234,41 +292,57 @@ static inline bool parse_allowedips(struct wgpeer *peer, struct wgallowedip **la
 	}
 	sep = mutable;
 	while ((mask = strsep(&sep, ","))) {
-		unsigned long cidr = ULONG_MAX;
-		char *end, *ip = strsep(&mask, "/");
+		unsigned long cidr;
+		char *end, *ip;
+
+		saved_entry = strdup(mask);
+		ip = strsep(&mask, "/");
 
 		new_allowedip = calloc(1, sizeof(struct wgallowedip));
 		if (!new_allowedip) {
 			perror("calloc");
+			free(saved_entry);
 			free(mutable);
 			return false;
 		}
+
+		if (!parse_ip(new_allowedip, ip)) {
+			free(saved_entry);
+			free(mutable);
+			return false;
+		}
+
+		if (mask) {
+			if (!isdigit(mask[0]))
+				goto err;
+			cidr = strtoul(mask, &end, 10);
+			if (*end || (cidr > 32 && new_allowedip->family == AF_INET) || (cidr > 128 && new_allowedip->family == AF_INET6))
+				goto err;
+		} else if (new_allowedip->family == AF_INET)
+			cidr = 32;
+		else if (new_allowedip->family == AF_INET6)
+			cidr = 128;
+		else
+			goto err;
+		new_allowedip->cidr = cidr;
+
 		if (allowedip)
 			allowedip->next_allowedip = new_allowedip;
 		else
 			peer->first_allowedip = new_allowedip;
 		allowedip = new_allowedip;
-
-		if (!parse_ip(allowedip, ip)) {
-			free(mutable);
-			return false;
-		}
-		if (mask && *mask) {
-			cidr = strtoul(mask, &end, 10);
-			if (*end)
-				cidr = ULONG_MAX;
-		}
-		if (allowedip->family == AF_INET)
-			cidr = cidr > 32 ? 32 : cidr;
-		else if (allowedip->family == AF_INET6)
-			cidr = cidr > 128 ? 128 : cidr;
-		else
-			continue;
-		allowedip->cidr = cidr;
+		free(saved_entry);
 	}
 	free(mutable);
 	*last_allowedip = allowedip;
 	return true;
+
+err:
+	free(new_allowedip);
+	free(mutable);
+	fprintf(stderr, "AllowedIP is not in the correct format: `%s'\n", saved_entry);
+	free(saved_entry);
+	return false;
 }
 
 static bool process_line(struct config_ctx *ctx, const char *line)
@@ -309,9 +383,7 @@ static bool process_line(struct config_ctx *ctx, const char *line)
 			ret = parse_fwmark(&ctx->device->fwmark, &ctx->device->flags, value);
 		else if (key_match("PrivateKey")) {
 			ret = parse_key(ctx->device->private_key, value);
-			if (!ret)
-				memset(ctx->device->private_key, 0, WG_KEY_LEN);
-			else
+			if (ret)
 				ctx->device->flags |= WGDEVICE_HAS_PRIVATE_KEY;
 		} else
 			goto error;
@@ -328,9 +400,7 @@ static bool process_line(struct config_ctx *ctx, const char *line)
 			ret = parse_persistent_keepalive(&ctx->last_peer->persistent_keepalive_interval, &ctx->last_peer->flags, value);
 		else if (key_match("PresharedKey")) {
 			ret = parse_key(ctx->last_peer->preshared_key, value);
-			if (!ret)
-				memset(ctx->last_peer->preshared_key, 0, WG_KEY_LEN);
-			else if (!key_is_zero(ctx->last_peer->preshared_key))
+			if (ret)
 				ctx->last_peer->flags |= WGPEER_HAS_PRESHARED_KEY;
 		} else
 			goto error;
@@ -403,54 +473,6 @@ err:
 	return NULL;
 }
 
-static bool read_keyfile(char dst[WG_KEY_LEN_BASE64], const char *path)
-{
-	FILE *f;
-	int c;
-	bool ret = false;
-
-	f = fopen(path, "r");
-	if (!f) {
-		perror("fopen");
-		return false;
-	}
-
-	if (fread(dst, WG_KEY_LEN_BASE64 - 1, 1, f) != 1) {
-		if (errno) {
-			perror("fread");
-			goto out;
-		}
-		/* If we're at the end and we didn't read anything, we're /dev/null. */
-		if (!ferror(f) && feof(f) && !ftell(f)) {
-			static const uint8_t zeros[WG_KEY_LEN] = { 0 };
-
-			key_to_base64(dst, zeros);
-			ret = true;
-			goto out;
-		}
-
-		fprintf(stderr, "Invalid length key in key file\n");
-		goto out;
-	}
-	dst[WG_KEY_LEN_BASE64 - 1] = '\0';
-
-	while ((c = getc(f)) != EOF) {
-		if (!isspace(c)) {
-			fprintf(stderr, "Found trailing character in key file: `%c'\n", c);
-			goto out;
-		}
-	}
-	if (ferror(f) && errno) {
-		perror("getc");
-		goto out;
-	}
-	ret = true;
-
-out:
-	fclose(f);
-	return ret;
-}
-
 static char *strip_spaces(const char *in)
 {
 	char *out;
@@ -491,14 +513,9 @@ struct wgdevice *config_read_cmd(char *argv[], int argc)
 			argv += 2;
 			argc -= 2;
 		} else if (!strcmp(argv[0], "private-key") && argc >= 2 && !peer) {
-			char key_line[WG_KEY_LEN_BASE64];
-
-			if (read_keyfile(key_line, argv[1])) {
-				if (!parse_key(device->private_key, key_line))
-					goto error;
-				device->flags |= WGDEVICE_HAS_PRIVATE_KEY;
-			} else
+			if (!parse_keyfile(device->private_key, argv[1]))
 				goto error;
+			device->flags |= WGDEVICE_HAS_PRIVATE_KEY;
 			argv += 2;
 			argc -= 2;
 		} else if (!strcmp(argv[0], "peer") && argc >= 2) {
@@ -516,6 +533,7 @@ struct wgdevice *config_read_cmd(char *argv[], int argc)
 			peer = new_peer;
 			if (!parse_key(peer->public_key, argv[1]))
 				goto error;
+			peer->flags |= WGPEER_HAS_PUBLIC_KEY;
 			argv += 2;
 			argc -= 2;
 		} else if (!strcmp(argv[0], "remove") && argc >= 1 && peer) {
@@ -545,15 +563,9 @@ struct wgdevice *config_read_cmd(char *argv[], int argc)
 			argv += 2;
 			argc -= 2;
 		} else if (!strcmp(argv[0], "preshared-key") && argc >= 2 && peer) {
-			char key_line[WG_KEY_LEN_BASE64];
-
-			if (read_keyfile(key_line, argv[1])) {
-				if (!parse_key(peer->preshared_key, key_line))
-					goto error;
-				if (!key_is_zero(peer->preshared_key))
-					peer->flags |= WGPEER_HAS_PRESHARED_KEY;
-			} else
+			if (!parse_keyfile(peer->preshared_key, argv[1]))
 				goto error;
+			peer->flags |= WGPEER_HAS_PRESHARED_KEY;
 			argv += 2;
 			argc -= 2;
 		} else {

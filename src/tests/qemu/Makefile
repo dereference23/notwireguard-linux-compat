@@ -10,7 +10,7 @@ endif
 ARCH := $(firstword $(subst -, ,$(CBUILD)))
 
 # Set these from the environment to override
-KERNEL_VERSION ?= 4.13.12
+KERNEL_VERSION ?= 4.14.2
 BUILD_PATH ?= $(PWD)/../../../qemu-build/$(ARCH)
 DISTFILES_PATH ?= $(PWD)/distfiles
 DEBUG_KERNEL ?= no
@@ -48,11 +48,11 @@ endif
 
 $(eval $(call tar_download,KERNEL,linux,$(KERNEL_VERSION),.tar.gz,$(KERNEL_URL_DIRECTORY)))
 $(eval $(call tar_download,MUSL,musl,1.1.16,.tar.gz,https://www.musl-libc.org/releases/))
-$(eval $(call tar_download,LIBMNL,libmnl,1.0.4,.tar.bz2,http://ftp.netfilter.org/pub/libmnl/))
+$(eval $(call tar_download,LIBMNL,libmnl,1.0.4,.tar.bz2,https://www.netfilter.org/projects/libmnl/files/))
 $(eval $(call tar_download,IPERF,iperf,3.1.7,.tar.gz,http://downloads.es.net/pub/iperf/))
 $(eval $(call tar_download,BASH,bash,4.4.12,.tar.gz,https://ftp.gnu.org/gnu/bash/))
 $(eval $(call tar_download,IPROUTE2,iproute2,4.13.0,.tar.gz,https://www.kernel.org/pub/linux/utils/net/iproute2/))
-$(eval $(call tar_download,IPTABLES,iptables,1.6.1,.tar.bz2,http://ftp.netfilter.org/pub/iptables/))
+$(eval $(call tar_download,IPTABLES,iptables,1.6.1,.tar.bz2,https://www.netfilter.org/projects/iptables/files/))
 $(eval $(call tar_download,NMAP,nmap,7.60,.tar.bz2,https://nmap.org/dist/))
 $(eval $(call tar_download,IPUTILS,iputils,s20161105,.tar.gz,https://github.com/iputils/iputils/archive/s20161105.tar.gz/#))
 
@@ -62,10 +62,12 @@ export CPPFLAGS := -I$(BUILD_PATH)/include
 ifeq ($(CHOST),$(CBUILD))
 CROSS_COMPILE_FLAG := --host=$(CHOST)
 CFLAGS += -march=native
+STRIP := strip
 else
 $(info Cross compilation: building for $(CBUILD) using $(CHOST))
 CROSS_COMPILE_FLAG := --build=$(CBUILD) --host=$(CHOST)
 export CROSS_COMPILE=$(CBUILD)-
+STRIP := $(CBUILD)-strip
 endif
 ifeq ($(ARCH),aarch64)
 QEMU_ARCH := aarch64
@@ -115,8 +117,8 @@ ifeq ($(CHOST),$(CBUILD))
 QEMU_MACHINE := -cpu host -machine malta,accel=kvm
 CFLAGS += -EB
 else
-QEMU_MACHINE := -cpu 20Kc -machine malta -smp 1
-CFLAGS += -march=mips64r2 -EB
+QEMU_MACHINE := -cpu I6400 -machine malta
+CFLAGS += -march=mips64r6 -EB
 endif
 else ifeq ($(ARCH),mips64el)
 QEMU_ARCH := mips64el
@@ -126,8 +128,8 @@ ifeq ($(CHOST),$(CBUILD))
 QEMU_MACHINE := -cpu host -machine malta,accel=kvm
 CFLAGS += -EL
 else
-QEMU_MACHINE := -cpu 20Kc -machine malta -smp 1
-CFLAGS += -march=mips64r2 -EL
+QEMU_MACHINE := -cpu I6400 -machine malta
+CFLAGS += -march=mips64r6 -EL
 endif
 else ifeq ($(ARCH),mips)
 QEMU_ARCH := mips
@@ -155,7 +157,6 @@ else
 $(error I only build: x86_64, i686, arm, aarch64, mips, mipsel, mips64, mips64el)
 endif
 
-STRIP := $(CBUILD)-strip
 REAL_CC := $(CBUILD)-gcc
 MUSL_CC := $(BUILD_PATH)/musl-gcc
 export CC := $(MUSL_CC)
@@ -200,7 +201,7 @@ $(BUILD_PATH)/init-cpio-spec.txt:
 
 $(KERNEL_PATH)/.installed: $(KERNEL_TAR)
 	mkdir -p $(BUILD_PATH)
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	sed -i "/^if INET\$$/a source \"net/wireguard/Kconfig\"" $(KERNEL_PATH)/net/Kconfig
 	sed -i "/^obj-\$$(CONFIG_NETFILTER).*+=/a obj-\$$(CONFIG_WIREGUARD) += wireguard/" $(KERNEL_PATH)/net/Makefile
 	ln -sfT $(shell readlink -f ../..) $(KERNEL_PATH)/net/wireguard
@@ -223,8 +224,7 @@ $(BUILD_PATH)/include/linux/.installed: | $(KERNEL_PATH)/.config
 
 $(MUSL_PATH)/lib/libc.so: $(MUSL_TAR)
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	cd $(MUSL_PATH) && CC=$(REAL_CC) ./configure --prefix=/ --disable-static --build=$(CBUILD)
 	$(MAKE) -C $(MUSL_PATH)
 	$(STRIP) -s $@
@@ -240,8 +240,7 @@ $(MUSL_CC): $(MUSL_PATH)/lib/libc.so
 
 $(IPERF_PATH)/.installed: $(IPERF_TAR)
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	sed -i '1s/^/#include <stdint.h>/' $(IPERF_PATH)/src/cjson.h $(IPERF_PATH)/src/timer.h
 	sed -i -r 's/-p?g//g' $(IPERF_PATH)/src/Makefile*
 	touch $@
@@ -252,8 +251,7 @@ $(IPERF_PATH)/src/iperf3: | $(IPERF_PATH)/.installed $(USERSPACE_DEPS)
 	$(STRIP) -s $@
 
 $(LIBMNL_PATH)/.installed: $(LIBMNL_TAR)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	touch $@
 
 $(LIBMNL_PATH)/src/.libs/libmnl.a: | $(LIBMNL_PATH)/.installed $(USERSPACE_DEPS)
@@ -275,8 +273,7 @@ $(BUILD_PATH)/init: init.c | $(USERSPACE_DEPS)
 
 $(IPUTILS_PATH)/.installed: $(IPUTILS_TAR)
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	touch $@
 
 $(IPUTILS_PATH)/ping: | $(IPUTILS_PATH)/.installed $(USERSPACE_DEPS)
@@ -285,8 +282,7 @@ $(IPUTILS_PATH)/ping: | $(IPUTILS_PATH)/.installed $(USERSPACE_DEPS)
 
 $(BASH_PATH)/.installed: $(BASH_TAR)
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	touch $@
 
 $(BASH_PATH)/bash: | $(BASH_PATH)/.installed $(USERSPACE_DEPS)
@@ -299,8 +295,7 @@ $(eval $(call file_download,272-uapi-if_ether.h-prevent-redefinition-of-struct-e
 
 $(IPROUTE2_PATH)/.installed: $(IPROUTE2_TAR) | $(DISTFILES_PATH)/271-uapi-libc-compat.h-do-not-rely-on-__GLIBC__.patch $(DISTFILES_PATH)/272-uapi-if_ether.h-prevent-redefinition-of-struct-ethhd.patch
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	patch -d $(IPROUTE2_PATH) -p 1 < $(DISTFILES_PATH)/271-uapi-libc-compat.h-do-not-rely-on-__GLIBC__.patch
 	patch -d $(IPROUTE2_PATH) -p 1 < $(DISTFILES_PATH)/272-uapi-if_ether.h-prevent-redefinition-of-struct-ethhd.patch
 	printf 'CC=$(CC)\nPKG_CONFIG=pkg-config\nTC_CONFIG_XT=n\nTC_CONFIG_ATM=n\nTC_CONFIG_IPSET=n\nIP_CONFIG_SETNS=y\nHAVE_ELF=n\nHAVE_MNL=y\nHAVE_BERKELEY_DB=n\nHAVE_LATEX=n\nHAVE_PDFLATEX=n\n' > $(IPROUTE2_PATH)/Config
@@ -317,8 +312,7 @@ $(IPROUTE2_PATH)/misc/ss: | $(IPROUTE2_PATH)/.installed $(LIBMNL_PATH)/src/.libs
 
 $(IPTABLES_PATH)/.installed: $(IPTABLES_TAR)
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	sed -i -e "/nfnetlink=[01]/s:=[01]:=0:" -e "/nfconntrack=[01]/s:=[01]:=0:" $(IPTABLES_PATH)/configure
 	touch $@
 
@@ -329,8 +323,7 @@ $(IPTABLES_PATH)/iptables/xtables-multi: | $(IPTABLES_PATH)/.installed $(LIBMNL_
 
 $(NMAP_PATH)/.installed: $(NMAP_TAR)
 	mkdir -p $(BUILD_PATH)
-	flock -x $<.lock true
-	tar -C $(BUILD_PATH) -xf $<
+	flock -s $<.lock tar -C $(BUILD_PATH) -xf $<
 	touch $@
 
 $(NMAP_PATH)/ncat/ncat: | $(NMAP_PATH)/.installed $(USERSPACE_DEPS)

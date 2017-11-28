@@ -28,10 +28,6 @@
 #error "WireGuard requires Linux >= 3.10"
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0) && defined(CONFIG_X86_64)
-#define CONFIG_AS_SSSE3
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 0) && !defined(ISRHEL7)
 #define headers_start data
 #define headers_end data
@@ -42,6 +38,7 @@
 #define __ro_after_init __read_mostly
 #endif
 
+#include <linux/compiler.h>
 #ifndef READ_ONCE
 #define READ_ONCE ACCESS_ONCE
 #endif
@@ -451,32 +448,29 @@ static inline struct nlattr **genl_family_attrbuf(const struct genl_family *fami
 #define COMPAT_CANNOT_USE_GENL_NOPS
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 2) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 16) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 65) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 101) && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0)) || LINUX_VERSION_CODE < KERNEL_VERSION(3, 18, 84)
+#define ___COMPAT_NETLINK_DUMP_BLOCK { int ret; skb->end -= nlmsg_total_size(sizeof(int)); ret = get_device_dump_real(skb, cb); skb->end += nlmsg_total_size(sizeof(int)); return ret; }
+#define ___COMPAT_NETLINK_DUMP_OVERRIDE
+#else
+#define ___COMPAT_NETLINK_DUMP_BLOCK return get_device_dump_real(skb, cb);
+#endif
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 14) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)) || LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 63)
 #define get_device_dump(a, b) get_device_dump_real(a, b); \
 static int get_device_dump(a, b) { \
-	int ret; \
 	struct wireguard_device *wg = (struct wireguard_device *)cb->args[0]; \
 	if (!wg) { \
 		int ret = get_device_start(cb); \
 		if (ret) \
 			return ret; \
 	} \
-	/* https://patchwork.kernel.org/patch/10046511/ */ \
-	skb->end -= nlmsg_total_size(sizeof(int)); \
-	ret = get_device_dump_real(skb, cb); \
-	skb->end += nlmsg_total_size(sizeof(int)); \
-	return ret; \
+	___COMPAT_NETLINK_DUMP_BLOCK \
 } \
 static int get_device_dump_real(a, b)
 #define COMPAT_CANNOT_USE_NETLINK_START
-#else /* https://patchwork.kernel.org/patch/10046511/ */
+#elif defined(___COMPAT_NETLINK_DUMP_OVERRIDE)
 #define get_device_dump(a, b) get_device_dump_real(a, b); \
 static int get_device_dump(a, b) { \
-	int ret; \
-	skb->end -= nlmsg_total_size(sizeof(int)); \
-	ret = get_device_dump_real(skb, cb); \
-	skb->end += nlmsg_total_size(sizeof(int)); \
-	return ret; \
+	___COMPAT_NETLINK_DUMP_BLOCK \
 } \
 static int get_device_dump_real(a, b)
 #endif
@@ -493,8 +487,7 @@ static int get_device_dump_real(a, b)
 #define COMPAT_CANNOT_USE_IFF_NO_QUEUE
 #endif
 
-#if defined(CONFIG_X86_64)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if defined(CONFIG_X86_64) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 #include <asm/user.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
 #include <asm/xsave.h>
@@ -510,6 +503,23 @@ static inline int cpu_has_xfeatures(u64 xfeatures_needed, const char **feature_n
 #ifndef XFEATURE_MASK_SSE
 #define XFEATURE_MASK_SSE XSTATE_SSE
 #endif
+#ifndef XFEATURE_MASK_ZMM_Hi256
+#define XFEATURE_MASK_ZMM_Hi256 XSTATE_ZMM_Hi256
+#endif
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0) && defined(CONFIG_X86_64)
+/* This is incredibly dumb and reckless, but as it turns out, there's
+ * not really hardware Linux runs properly on that supports F but not BW
+ * and VL, so in practice this isn't so bad. Plus, this is compat layer,
+ * so the bar remains fairly low.
+ */
+#include <asm/cpufeature.h>
+#ifndef X86_FEATURE_AVX512BW
+#define X86_FEATURE_AVX512BW X86_FEATURE_AVX512F
+#endif
+#ifndef X86_FEATURE_AVX512VL
+#define X86_FEATURE_AVX512VL X86_FEATURE_AVX512F
 #endif
 #endif
 
@@ -521,6 +531,20 @@ struct _____dummy_container { char dev; };
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
 #define timer_setup(a, b, c) setup_timer(a, ((void (*)(unsigned long))b), ((unsigned long)a))
 #define from_timer(var, callback_timer, timer_fieldname) container_of(callback_timer, typeof(*var), timer_fieldname)
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 14, 3)
+#define COMPAT_CANNOT_USE_AVX512
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 17, 0)
+#define timespec64 timespec
+#define getnstimeofday64 getnstimeofday
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+#include <net/genetlink.h>
+#define genl_dump_check_consistent(a, b) genl_dump_check_consistent(a, b, &genl_family)
 #endif
 
 /* https://lkml.org/lkml/2017/6/23/790 */
@@ -560,6 +584,18 @@ static inline void new_icmpv6_send(struct sk_buff *skb, u8 type, u8 code, __u32 
 #include <linux/cache.h>
 #undef __read_mostly
 #define __read_mostly
+#endif
+#if defined(RAP_PLUGIN) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+#include <linux/timer.h>
+#define expired_retransmit_handshake(a) expired_retransmit_handshake(unsigned long timer)
+#define expired_send_keepalive(a) expired_send_keepalive(unsigned long timer)
+#define expired_new_handshake(a) expired_new_handshake(unsigned long timer)
+#define expired_zero_key_material(a) expired_zero_key_material(unsigned long timer)
+#define expired_send_persistent_keepalive(a) expired_send_persistent_keepalive(unsigned long timer)
+#undef timer_setup
+#define timer_setup(a, b, c) setup_timer(a, ((void (*)(unsigned long))b), ((unsigned long)a))
+#undef from_timer
+#define from_timer(var, callback_timer, timer_fieldname) container_of((struct timer_list *)callback_timer, typeof(*var), timer_fieldname)
 #endif
 
 #endif /* _WG_COMPAT_H */
