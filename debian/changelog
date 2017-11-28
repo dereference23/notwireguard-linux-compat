@@ -1,3 +1,10 @@
+wireguard (0.0.20171127-1) unstable; urgency=medium
+
+  * New upstream release.
+  * d/copyright: annotate new assembler
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 28 Nov 2017 17:29:39 -0500
+
 wireguard (0.0.20171111-1) unstable; urgency=medium
 
   * New upstream release
