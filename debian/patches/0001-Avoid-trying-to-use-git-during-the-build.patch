@@ -9,10 +9,10 @@ during the debian build, we'll use the debian version.
  1 file changed, 4 insertions(+), 8 deletions(-)
 
 diff --git a/src/Makefile b/src/Makefile
-index c4ccb55..1b7e98e 100644
+index 026c21f..e63a368 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -14,19 +14,15 @@ MAKEFLAGS += --no-print-directory
+@@ -18,19 +18,15 @@ MAKEFLAGS += --no-print-directory
  endif
  
  version.h:
