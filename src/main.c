@@ -1,4 +1,7 @@
-/* Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved. */
+/* SPDX-License-Identifier: GPL-2.0
+ *
+ * Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ */
 
 #include "version.h"
 #include "device.h"
@@ -34,7 +37,7 @@ static int __init mod_init(void)
 	if (ret < 0)
 		goto err_packet;
 
-	ret = netlink_init();
+	ret = genetlink_init();
 	if (ret < 0)
 		goto err_netlink;
 
@@ -51,7 +54,7 @@ err_packet:
 
 static void __exit mod_exit(void)
 {
-	netlink_uninit();
+	genetlink_uninit();
 	device_uninit();
 	pr_debug("WireGuard unloaded\n");
 }
