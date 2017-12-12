@@ -1,0 +1,10 @@
+# This should only be relevant for 0.0.20171211 i raised the issue
+# upstream and Jason is fixing it for future releases, see
+# https://lists.zx2c4.com/pipermail/wireguard/2017-December/002206.html
+# and subsequent discussion.  note that the source for this artifact
+# does actually exist in
+# contrib/examples/keygen-html/src/curve25519_generate.c, but we do
+# not want to add emscripten to the build-dependencies.
+wireguard source: insane-line-length-in-source-file contrib/examples/keygen-html/curve25519_generate.js line length is 30223 characters (>512)
+wireguard source: source-contains-prebuilt-javascript-object contrib/examples/keygen-html/curve25519_generate.js line length is 30223 characters (>512)
+wireguard source: source-is-missing contrib/examples/keygen-html/curve25519_generate.js line length is 30223 characters (>512)
