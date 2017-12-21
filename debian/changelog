@@ -1,3 +1,10 @@
+wireguard (0.0.20171221-1) unstable; urgency=medium
+
+  * New upstream release
+  * drop workaround curve25519_generate.js, fixed upstream
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 20 Dec 2017 22:13:31 -0500
+
 wireguard (0.0.20171211-1) unstable; urgency=medium
 
   * New upstream release
