@@ -1,0 +1,740 @@
+2017-12-21 (tag: 0.0.20171221) version: bump snapshot
+2017-12-21 compat: kernels < 3.13 modified genl_ops
+2017-12-13 crypto: compile on UML
+2017-12-13 wg-quick: dumber matching for default routes
+2017-12-12 wg-quick: add the "Table" config option
+2017-12-12 keygen-html: remove prebuilt file
+2017-12-11 (tag: 0.0.20171211) version: bump snapshot
+2017-12-10 chacha20poly1305: wire up avx512vl for skylake-x
+2017-12-06 chacha20: avx512vl implementation
+2017-12-07 poly1305: fix avx512f alignment bug
+2017-12-04 chacha20poly1305: cleaner generic code
+2017-12-03 blake2s-x86_64: fix spacing
+2017-11-30 global: add SPDX tags to all files
+2017-12-03 chacha20-arm: fix with clang -fno-integrated-as.
+2017-12-01 poly1305: update x86-64 kernel to AVX512F only
+2017-12-01 tools: no need to put this on the stack
+2017-12-01 tools: remove undocumented unused syntax
+2017-12-01 contrib: keygen-html for generating keys in the browser
+2017-11-30 kernel-tree: jury rig is the more common spelling
+2017-11-29 netlink: rename symbol to avoid clashes
+2017-11-29 device: clear last handshake timer on ifdown
+2017-11-29 compat: fix 3.10 backport
+2017-11-28 device: do not clear keys during sleep on Android
+2017-11-28 curve25519: explictly depend on AS_AVX
+2017-11-28 compat: support RAP in assembly
+2017-11-28 curve25519: modularize dispatch
+2017-11-27 (tag: 0.0.20171127) version: bump snapshot
+2017-11-27 qemu: take shared lock for untarring
+2017-11-23 blake2s: tweak avx512 code
+2017-11-26 compat: support 4.15's netlink and barrier changes
+2017-11-24 allowedips: simplify
+2017-11-13 allowedips: optimize
+2017-11-25 qemu: use netfilter.org https site
+2017-11-23 chacha20: directly assign constant and initial state
+2017-11-23 compat: fix typo and ranges
+2017-11-23 tools: fix removing preshared keys
+2017-11-22 compat: support AVX512BW+VL by lying
+2017-11-22 blake2s: hmac space optimization
+2017-11-22 blake2s: AVX512F+VL implementation
+2017-11-22 poly1305-avx512: requires AVX512F+VL+BW
+2017-11-22 compat: support timespec64 on old kernels
+2017-11-22 (tag: 0.0.20171122) version: bump snapshot
+2017-11-22 chacha20poly1305: poly cleans up its own state
+2017-11-22 poly1305-x86_64: unclobber %rbp
+2017-11-22 global: switch from timeval to timespec
+2017-11-22 poly1305: import MIPS64 primitive from OpenSSL
+2017-11-20 chacha20poly1305: import ARM primitives from OpenSSL
+2017-11-17 chacha20poly1305: import x86_64 primitives from OpenSSL
+2017-11-20 chacha20poly1305: add more test vectors, some of which are weird
+2017-11-21 compat: new kernels have netlink fixes
+2017-11-18 compat: stable finally backported fix
+2017-11-17 qemu: use unprefixed strip when not cross-compiling
+2017-11-17 tools: tighten up strtoul parsing
+2017-11-17 device: uninitialize socket first in destruction
+2017-11-17 socket: only free socket after successful creation of new
+2017-11-12 compat: fix compilation with PaX
+2017-11-13 curve25519-neon: compile in thumb mode
+2017-11-13 compat: 3.16.50 got proper rt6_get_cookie
+2017-11-13 qemu: update kernel
+2017-11-13 allowedips: do not write out of bounds
+2017-11-13 selftest: allowedips: randomized test mutex update
+2017-11-12 wg-quick: document localhost exception and v6 rule
+2017-11-11 (tag: 0.0.20171111) version: bump snapshot
+2017-11-11 tools: allow for NULL keys everywhere
+2017-11-11 curve25519: reject deriving from NULL private keys
+2017-11-10 tools: remove ioctl cruft
+2017-11-10 allowedips: rename from routingtable
+2017-11-09 wg-quick: allow for tabs in keys
+2017-11-07 netlink: make sure we reserve space for NLMSG_DONE
+2017-11-09 compat: 4.4.0 has strange ECN function
+2017-11-08 wg-quick: stat the correct enclosing folder of config file
+2017-11-08 qemu: bump kernel version
+2017-11-06 receive: hoist fpu outside of receive loop
+2017-11-05 qemu: more debugging
+2017-11-03 device: wait for all peers to be freed before destroying
+2017-11-03 qemu: check for memory leaks
+2017-11-03 netlink: plug memory leak
+2017-11-03 device: please lockdep
+2017-11-02 global: revert checkpatch.pl changes
+2017-11-01 Kconfig: remove trailing whitespace
+2017-11-01 (tag: 0.0.20171101) version: bump snapshot
+2017-11-01 compat: unbreak unloading on kernels 4.6 through 4.9
+2017-10-31 timers: switch to kees' new timer_list functions
+2017-10-31 wg-quick: save all hooks on save
+2017-10-31 version: bump snapshot
+2017-10-31 wg-quick: fsync the temporary file before renaming
+2017-10-31 wg-quick: allow for saving existing interface
+2017-10-31 contrib: add reresolve-dns
+2017-10-31 tools: correct type for CTRL_ATTR_FAMILY_ID
+2017-10-31 wg-quick: allow for the hatchet, but not by default
+2017-10-31 global: use fewer BUG_ONs
+2017-10-31 timers: guard entire setting in block
+2017-10-31 curve25519: only enable int128 if compiler support is sound
+2017-10-27 device: expand scope of destruct lock
+2017-10-27 global: get rid of useless forward declarations
+2017-10-25 device: only take reference if netns is different
+2017-10-26 wg-quick: remember to rewind DNS settings on failure
+2017-10-25 wg-quick: allow specifiying multiple hooks
+2017-10-25 qemu: test using four cores
+2017-10-25 global: style nits
+2017-10-25 qemu: work around ccache bugs
+2017-10-25 global: infuriating kernel iterator style
+2017-10-25 peer: store total number of peers instead of iterating
+2017-10-25 peer: get rid of peer_for_each magic
+2017-10-25 compat: be sure to include header before testing
+2017-10-19 qemu: allow for cross compilation
+2017-10-20 crypto/avx: make sure we can actually use ymm registers
+2017-10-21 blake2: include headers for macros
+2017-10-20 global: accept decent check_patch.pl suggestions
+2017-10-19 compat: fix up stat calculation for udp tunnel
+2017-10-19 stats: more robust accounting
+2017-10-19 selftest: initialize mutex in routingtable selftest
+2017-10-23 netns: use time-based test instead of quantity-based
+2017-10-18 netns: use read built-in instead of ncat hack for dmesg
+2017-10-17 (tag: 0.0.20171017) version: bump snapshot
+2017-10-17 tools: account for padding being in zero attribute
+2017-10-17 tools: newline after warning
+2017-10-16 tools: style
+2017-10-16 qemu: put hvc directive into configuration
+2017-10-16 netns: disable accept_dad for all interfaces
+2017-10-16 tools: add pass example to wg-quick man page
+2017-10-16 tools: don't insist on having a private key
+2017-10-15 tools: retry resolution except when fatal
+2017-10-15 tools: encoding: be more paranoid
+2017-10-14 Makefile: even prettier output
+2017-10-14 qemu: newer packages
+2017-10-13 qemu: always create directory before untarring
+2017-10-13 qemu: phase out bitbanging
+2017-10-13 qemu: open /dev/console if we're started early
+2017-10-13 qemu: simplify shutdown
+2017-10-13 qemu: add more debugging options to main makefile
+2017-10-12 qemu: work on ubuntu toolchain
+2017-10-12 qemu: add build-only target
+2017-10-13 selftest: better test index for rate limiter
+2017-10-13 blake2s: modernize API and have faster _final
+2017-10-12 Makefile: do not clean before cloc
+2017-10-12 receive: improve control flow
+2017-10-12 compat: support READ_ONCE
+2017-10-12 device: no need to take lock for integer comparison
+2017-10-12 device: our use of queues means this check is worthless
+2017-10-12 socket: eliminate dead code
+2017-10-12 send: improve dead packet control flow
+2017-10-12 noise: no need to take the RCU lock if we're not dereferencing
+2017-10-12 compat: just make ro_after_init read_mostly
+2017-10-12 noise: handshake constants can be read-only after init
+2017-10-11 (tag: 0.0.20171011) version: bump snapshot
+2017-10-11 contrib: filter compat lines
+2017-10-11 receive: disable bh before using stats seq lock
+2017-10-11 tools: man: include kill-switch documentation using fwmark
+2017-10-11 socket: set skb->mark in addition to flowi
+2017-10-11 send: do not requeue if packet is dead
+2017-10-10 compat: move version logic to compat.h and out of main .c
+2017-10-10 tools: store tail pointer to make coalescing peers fast
+2017-10-09 (origin/master) tools: warn once on unrecognized items
+2017-10-09 routingtable: iterate progressively
+2017-10-09 routingtable: only use device's mutex, not a special rt one
+2017-10-08 crypto/x86_64: satisfy stack validation 2.0
+2017-10-08 qemu: bump stable kernel
+2017-10-09 Makefile: quiet recursive make
+2017-10-08 tools: try again if dump is interrupted
+2017-10-06 socket: gcc inlining makes this faster
+2017-10-06 socket: don't bother recomparing afterwards
+2017-10-06 socket: compare while unlocked first
+2017-10-06 receive: do not consider 0 jiffies as being set
+2017-10-06 (tag: 0.0.20171005) version: bump snapshot
+2017-10-05 queueing: cleanup skb_padding
+2017-10-05 compat: macro rewrite netlink instead of cluttering
+2017-10-05 Makefile: clang now builds the kernel, so use scan-build
+2017-10-05 queueing: move from ctx to cb
+2017-10-05 receive: do not store endpoint in ctx
+2017-10-05 compat: RHEL backported netlink changes
+2017-10-04 compat: conditionally redefine GENL_UNS_ADMIN_PERM
+2017-10-04 compat: support ptr_ring for old kernels
+2017-10-04 queueing: use ptr_ring instead of linked lists
+2017-10-04 receive: we're not planning on turning that into a while loop now
+2017-10-04 send: put keypair reference
+2017-10-03 receive: use local keypair, not ctx keypair in error path
+2017-10-03 Makefile: add non-verbose mode to tools
+2017-10-03 global: add space around variable declarations
+2017-10-03 global: use _WG prefix for include guards
+2017-10-03 global: satisfy bitshift pedantry
+2017-10-03 receive: simplify message type validation
+2017-10-02 curve25519-neon-arm: force ARM encoding, since this is unrepresentable in Thumb
+2017-10-02 kernel-tree: remember UAPI in patch creation
+2017-10-02 contrib: remove worthless build artifact
+2017-10-02 tools: compile on non-Linux
+2017-10-02 tools: simmer down silly compilers
+2017-10-02 (tag: 0.0.20171001) version: bump snapshot
+2017-10-02 tools: do not warn on unrecognized items
+2017-10-02 ratelimiter: wait for destruction, not for read_unlock
+2017-10-02 qemu: add watchdog for not hanging on oops
+2017-10-02 messages: reduce maximum staged packets per peer
+2017-10-01 noise: use spinlock for rotating keys
+2017-10-01 wg-quick: check permissions of parent directory
+2017-10-01 wg-quick: verify wireguard interface in more clever way
+2017-10-01 wg-quick: anchor sysctl regex to start and end
+2017-09-29 debug: add better insert target
+2017-09-28 peer: remove from RCU lists when the kref is zero
+2017-09-28 timers: ensure safe timer removal
+2017-09-28 receive: do not consider netfilter drop a real drop
+2017-09-28 peer: ensure that lookup tables are added last
+2017-09-25 netlink: switch from ioctl to netlink for configuration
+2017-09-26 tools: uapi: only make sure socket file is socket
+2017-09-26 receive: mark function static
+2017-09-25 queueing: more standard init/uninit names
+2017-09-22 tools: use key_is_zero for comparing to zeros
+2017-09-22 config: do not reset device port
+2017-09-22 timers: convert to use netif_running
+2017-09-20 netns: disable rp_filter for final test
+2017-09-19 contrib: add sticky sockets example code
+2017-09-19 queueing: rename cpumask function
+2017-09-19 queueing: clean up worthless helper
+2017-09-19 peer: rearrange structs
+2017-09-19 device: properly arrange structs
+2017-09-19 send: don't take uninitialized lock
+2017-09-19 queueing: no need to memzero struct
+2017-09-19 receive: use netif_receive_skb instead of netif_rx
+2017-09-18 (tag: 0.0.20170918) version: bump snapshot
+2017-09-18 compat: support RHEL 7.4
+2017-06-07 queue: entirely rework parallel system
+2017-09-16 compat: ensure we can build without compat.h
+2017-09-15 qemu: enable debug info for debug qemu
+2017-09-16 send: no need to check for NULL since ref is valid
+2017-09-14 timers: style
+2017-09-14 routingtable: satisfy sparse
+2017-09-14 socket: satisfy sparse
+2017-09-11 device: IFF_NO_QUEUE is a private flag, not a public one
+2017-09-07 (tag: 0.0.20170907, upstream) version: bump snapshot
+2017-09-07 compat: fix padata to work with 4.13
+2017-09-06 wg-quick: only bash complete existing interfaces for down
+2017-08-23 tools: fix removal of psk
+2017-08-11 socket: improve reply-to-src algorithm
+2017-08-10 (tag: 0.0.20170810) version: bump snapshot
+2017-08-08 hashtables: if we have an index match, don't search further ever
+2017-08-07 hashtables: allow up to 2^{20} peers per interface
+2017-08-06 compat: support grsecurity with our compat padata implementation
+2017-08-04 timers: do not send out double keepalive
+2017-08-04 noise: infer initiator or not from handshake state
+2017-08-04 timers: rename confusingly named functions and variables
+2017-08-04 receive: move lastminute guard into timer event
+2017-08-03 netns: work around linux 3.10 issues
+2017-08-03 netns: explictly test reply to sender routing
+2017-08-02 tools: stricter userspace ipc parsing
+2017-08-01 routingtable: unbloat BUG()
+2017-08-02 blake2s: satisfy sparse
+2017-08-01 selftest: more checking in ratelimiter
+2017-07-31 contrib: move Android tools to wireguard-android repo
+2017-07-30 recieve: pskb_trim already checks length
+2017-07-30 receive: single line if style
+2017-07-28 socket: move print function from compat
+2017-07-28 compat: get rid of warnings on frankenkernels
+2017-07-28 recieve: cleanup variable usage
+2017-07-27 compat: work around odd kernels that backport kv[mz]alloc
+2017-07-26 android: fix readme
+2017-07-26 (tag: 0.0.20170726) version: bump snapshot
+2017-07-26 wg-quick: add explicit support for common DNS usage
+2017-07-24 wg-quick: do not use grep
+2017-07-24 wg-quick: do not set explicit src route for v6 default route
+2017-07-20 android: add port of wg-quick
+2017-07-20 wg-quick: usage typos
+2017-07-18 qemu: warn on all unseeded random usage when in debug mode
+2017-07-16 global: wireguard.io --> wireguard.com
+2017-07-14 blake2s: fix up alignment issues
+2017-07-14 blake2s: move compression loop to assembly
+2017-06-16 send: use skb_queue_empty where appropriate
+2017-06-16 data: simplify no-keypair failure case
+2017-07-11 data: use KMEM_CACHE macro
+2017-07-11 ratelimiter: use KMEM_CACHE macro
+2017-07-10 global: use pointer to net_device
+2017-07-10 device: support 4.13's extact newlink param
+2017-07-10 send: orphan skbs when buffering longterm
+2017-07-07 selftests: ensure that there isnt CPU lag when testing rate limiter
+2017-07-07 compat: work around odd kernels that backport kvfree
+2017-07-07 socket: style
+2017-07-07 qemu: update default testing kernel
+2017-07-07 ratelimiter: consistently use non-bh rcu
+2017-07-06 (tag: 0.0.20170706) version: bump snapshot
+2017-07-06 socket: the checkers distinguish between _bh and non _bh
+2017-07-06 device: cleanup register_netdev logic
+2017-07-06 compat: priv_destructor got backported
+2017-07-06 counter: use correct unit for indices
+2017-07-04 ratelimiter: add self-test
+2017-07-04 ratelimiter: use IPv6 /64 instead of /96
+2017-07-04 ratelimiter: use kvzalloc for hash table allocation
+2017-05-31 gitignore: ignore split DWARF debug info
+2017-07-03 compat: workaround Ubuntu 16.10 kernel weirdness
+2017-07-03 compat: support OpenSUSE's backports
+2017-06-29 receive: cleanup error handlers
+2017-06-29 (tag: 0.0.20170629) version: bump snapshot
+2017-06-29 receive: pull IP header into head
+2017-06-29 receive: fix off-by-one in packet length checking
+2017-06-29 tools: remove double include in ipc
+2017-06-28 (tag: 0.0.20170628) version: bump snapshot
+2017-06-28 compat: support Ubuntu 14.04
+2017-06-28 compat: support EL7.3
+2017-06-27 wg-quick: use printf -v instead of namerefs for bash 4.2
+2017-06-28 compat: do not export symbols unnecessarily
+2017-06-25 global: cleanup IP header checking
+2017-06-24 device: remove icmp conntrack hacks
+2017-06-25 compat: clean up cruft
+2017-06-24 device: avoid double icmp send on routing loop
+2017-06-24 socket: use ip_rt_put instead of dst_release
+2017-06-23 socket: verify saddr belongs to interface
+2017-06-21 ratelimiter: rewrite from scratch
+2017-06-22 curve25519: keep certain sandy2x functions in C
+2017-06-22 curve25519: satisfy sparse and use short types
+2017-06-21 receive: extend rate limiting to 1 second after under load detection
+2017-06-21 device: only use one sleep notifier
+2017-06-16 device: netdevice destruction logic change for 4.12
+2017-06-23 wg-quick: properly match IPv6 endpoint
+2017-06-13 haskell: re-add updated haskell example
+2017-06-22 selftest: remove antique siphash self test
+2017-06-22 main: annotate init/exit functions to save memory
+2017-06-13 (tag: 0.0.20170613) version: bump snapshot
+2017-06-12 tools: use proper __linux__ ifdef
+2017-06-12 random: wait for random bytes when generating nonces and ephemerals
+2017-06-12 (tag: 0.0.20170612) version: bump snapshot
+2017-06-12 wg-quick: match ipv6 default route more broadly
+2017-06-11 wg-quick: make sure we have empty table for both v6 and v4
+2017-06-09 external-tests: trim the fat
+2017-06-02 config: ensure the RNG is initialized before setting
+2017-06-06 noise: fix race when replacing handshake
+2017-06-06 go test: use x/crypto for blake2s now that we have 128-bit mac
+2017-06-04 peer: explicitly initialize atomic
+2017-06-01 go test: correct tai64n and formatting
+2017-06-01 external-tests: add keepalive packet
+2017-06-01 compat: remove padata hotplug code
+2017-06-01 curve25519: use more standard label convention in asm
+2017-06-01 device: do-while assignment style
+2017-06-01 receive: trim incoming packets to IP header length
+2017-06-01 go test: properly pad message
+2017-05-31 timers: queue up killing ephemerals only if not already
+2017-05-31 config: add new line for style
+2017-05-31 (tag: 0.0.20170531) version: bump snapshot
+2017-05-31 timers: reset retry-attempt counter when not retrying
+2017-05-31 timers: the completion of a handshake also is on key confirmation
+2017-05-31 timers: rework handshake reply control flow
+2017-05-31 debug: print interface name in dmesg
+2017-05-31 compat: remove warning for < 4.1
+2017-05-30 config: it's faster to memcpy than strncpy
+2017-05-30 routingtable: Remove unnecessary check in node_placement()
+2017-05-30 data: enable BH during parallel crypto on ARM/NEON
+2017-05-30 curve25519: add NEON versions for ARM
+2017-05-30 curve25519: align the basepoint to 32 bytes
+2017-05-30 curve25519: actually, do some things on heap sometimes
+2017-05-30 tools: allow creating device with no peers
+2017-05-30 config: do not error out when getting if no peers
+2017-05-29 device: keep going when share_check fails
+2017-05-29 timers: fix typo in comment
+2017-05-29 rust test: add icmp ping
+2017-05-29 rust test: convert screech test to snow
+2017-05-24 style: spaces after for loops
+2017-05-24 peer: use iterator macro instead of callback
+2017-05-24 noise: precompute static-static ECDH operation
+2017-05-24 noise: no need to store ephemeral public key
+2017-05-23 handshake: process in parallel
+2017-05-22 compat: ship padata if kernel doesn't have it
+2017-05-22 man: update wg-quick(8) to show Debian resolvconf braindamage
+2017-05-21 chacha20poly1305: add NEON versions for ARM and ARM64
+2017-05-21 chacha20poly1305: move constants to rodata
+2017-05-18 wg-quick: use src routing for default routes in v6
+2017-05-18 man: fix psk mention in wg-quick man page
+2017-05-17 (tag: 0.0.20170517) version: bump snapshot
+2017-05-17 tools: opt-in globally to GNU-isms to keep the BSDs happy
+2017-05-15 tools: support text-based ipc
+2017-05-14 tools: check for proto error on set too
+2017-05-16 Kbuild: optimize debug builds too
+2017-05-14 tests: check for stats counter increases
+2017-05-14 qemu: new location for test kernels
+2017-05-12 tools: stricter key file reading
+2017-05-11 jerry-rig: symlinks are better for tree patching
+2017-04-27 noise: redesign preshared key mode
+2017-05-04 chacha20poly1305: implement vectorized hchacha20
+2017-04-25 qemu: new packages and better debugging
+2017-04-24 tools: wg-quick: auto MTU discovery
+2017-04-24 tools: retry name resolution on temporary failure
+2017-05-14 compat: remember to call iptunnel_xmit_stats
+2017-05-08 compat: use real crypto_memneq
+2017-05-09 compat: work around ubnt offloading
+2017-05-04 compat: ssse3 support
+2017-04-24 compat: use existing iptunnel_xmit function for stats
+2017-04-21 (tag: 0.0.20170421) version: bump snapshot
+2017-04-14 routingtable: rewrite core functions
+2017-04-19 compat: work on old 3.10
+2017-04-21 config: don't allow no-privatekey to mask preshared
+2017-04-19 cookie: move the bangs
+2017-04-20 tools: no hyphen in preshared, to keep uniformity
+2017-04-19 tools: argc is always 1
+2017-04-19 tools: check for malloc failure
+2017-04-16 tools: side channel resistant base64
+2017-04-14 netns: cleanup and add diagram
+2017-04-14 device: use rcu_barrier_bh
+2017-04-12 qemu: work on ARM64
+2017-04-09 receive: netif_rx consumes
+2017-04-09 (tag: 0.0.20170409) version: bump snapshot
+2017-04-09 compat: warn on < 4.1
+2017-04-09 compat: careful with destructors
+2017-04-09 compat: support 3.10
+2017-04-09 compat: support 3.12
+2017-04-09 compat: support 3.14
+2017-04-07 compat: support 3.16
+2017-04-09 data: alloca is actually as dangerous as they say
+2017-04-07 debug: cleanups
+2017-04-06 qemu: ensure kernel is configured before headers are installed
+2017-04-05 data: cleanup parallel workqueue and use two max_active
+2017-04-03 data: simplify flow
+2017-04-03 chacha20poly1305: check return values of sgops
+2017-04-03 locking: always use _bh
+2017-04-03 qemu: new stable kernel
+2017-03-30 chacha20poly1305: enforce authtag checking with compiler
+2017-03-30 curve25519: protect against potential invalid point attacks
+2017-03-28 config: do not allow peers with public keys the same as the interface
+2017-03-28 tools: do not use addrconfig with port in gai
+2017-03-27 main: add /sys/module/wireguard/version
+2017-03-27 compat: allow create-patch to work on debian-based builds
+2017-03-24 (tag: 0.0.20170324) version: bump snapshot
+2017-03-24 uapi: add version magic
+2017-03-23 wg-quick: various cleanups
+2017-03-22 socket: avoid deadlock on port retry
+2017-03-22 tools: document # comments in wg(8) man page
+2017-03-20 curve25519: 128-bit integer != x86_64
+2017-03-20 (tag: 0.0.20170320.1) version: bump snapshot
+2017-03-20 curve25519: do dispatcher in C instead of asm, since shlx is haswell only
+2017-03-20 (tag: 0.0.20170320) version: bump snapshot
+2017-03-15 data: big refactoring
+2017-03-19 curve25519: add AVX implementation
+2017-03-16 blake2s: add AVX implementation
+2017-03-17 config: satisfy sparse
+2017-03-16 tools: wg-quick: support old ip(8)
+2017-03-16 cookie: no need to hash rng
+2017-03-16 hashtables: get_random_int is now more secure, so expose directly
+2017-03-14 timers: elide enable check
+2017-02-27 create-patch: add context below to work with busybox patch
+2017-02-27 compat: use maybe_unused macro over gcc-specific
+2017-02-27 data: transition to skb_reset_tc for 4.11
+2017-02-27 device: move sysctl toggling to open time
+2017-02-27 receive: last_rx use is discouraged and removed in recent kernels
+2017-02-27 device: 4.11 uses cnf for addr_gen_mode
+2017-02-23 (tag: 0.0.20170223) version: bump snapshot
+2017-02-23 contrib: add wg-json utility
+2017-02-23 tools: fix bash completion spaces
+2017-02-22 tools: add wg show [interface] dump
+2017-02-22 tools: give "off" value for fwmark
+2017-02-22 wg-quick: allow config files without trailing newline
+2017-02-22 socket: do not try to create v6 socket when disabled
+2017-02-21 device: disable ICMP redirects
+2017-02-20 extract-keys: respect compat directives
+2017-02-14 (tag: 0.0.20170214) version: bump snapshot
+2017-02-14 Revert "main: add `wg` type alias"
+2017-02-14 Makefile: add module-install target
+2017-02-14 wg-quick: unquote fwmark for bash 4.3
+2017-02-13 (tag: 0.0.20170213) version: bump snapshot
+2017-02-11 create-patch: be sure it's actually after NETFILTER
+2017-02-07 Kconfig: can be a module
+2017-02-05 tools: wg-quick: set LC_ALL for consistent regex
+2017-01-24 socket: enable setting of fwmark
+2017-01-24 main: add `wg` type alias
+2017-01-24 device: shorter workqueue names to fit in ps
+2017-01-24 socket: general ephemeral ports instead of name-based ports
+2017-01-24 tools: wg-quick: support v6 dual stack
+2017-01-24 compat: backport siphash & dst_cache from mainline
+2017-01-24 socket: synchronize net on socket tear down
+2017-01-24 tools: remove key for any empty file
+2017-01-24 tools: setconf should remove existing psk
+2017-01-23 timers: use simpler uninit sync technique
+2017-01-23 timers: use setup_timer macro helper
+2017-01-19 tools: wg-quick: recommend using resolvconf in exclusive mode
+2017-01-15 tools: man: recommend correct port
+2017-01-15 curve25519: do everything on the stack
+2017-01-15 (tag: 0.0.20170115) version: bump snapshot
+2017-01-15 tools: wg-quick: parse IPv6 endpoints correctly
+2017-01-15 ratelimiter: 800ms too fast, decrease to 2s sustained rate
+2017-01-13 Use __read_mostly attribute when possible
+2017-01-12 config: useless newline
+2017-01-11 tools: wg-quick: better removal of suppress_prefix rule
+2017-01-10 Update copyright
+2017-01-10 uapi: use sockaddr union instead of sockaddr_storage
+2017-01-09 uapi: use flag instead of C bitfield for portability
+2017-01-10 tools: ipc: read from socket incrementally
+2017-01-08 tools: error on short ret reads
+2017-01-08 uapi: add missing userspace headers
+2017-01-05 tools: wg-quick: enforce good permissions
+2017-01-05 tools: add installation note for distros
+2017-01-05 (tag: 0.0.20170105) version: bump snapshot
+2017-01-04 tools: remove DESTDIR for autodetection
+2017-01-04 tools: add systemd unit and auto-detection
+2017-01-04 tools: add makefile instructions
+2017-01-02 tools: add wg-quick
+2017-01-04 tools: add bash completion for wg(8)
+2017-01-03 contrib: slight ncat tweak
+2016-12-30 (tag: 0.0.20161230) version: bump snapshot
+2016-12-30 tools: syscall.h should actually be sys/syscall.h
+2016-12-30 wg-config: use ip rules instead of tungate
+2016-12-29 qemu: kernel.org mirrors get updates slowly
+2016-12-26 compat: support 3.18, 3.19, 4.0
+2016-12-26 blake2s: cleanup
+2016-12-26 cookie: optimize
+2016-12-26 qemu: 4.10 needs posix timers
+2016-12-25 external-tests: update to latest
+2016-12-23 tools: rename 'bandwidth' to 'transfer' in output
+2016-12-23 (tag: 0.0.20161223) version: bump snapshot
+2016-12-23 cookies: use xchacha20poly1305 instead of chacha20poly1305
+2016-12-21 wg-config: cleanups
+2016-12-20 tools: do not use AI_ADDRCONFIG
+2016-12-20 tools: allowed-ips is easier to parse with spaces instead of ", "
+2016-12-20 routing-table: simplify and mask reparented root
+2016-12-20 wg-config: cleanup ip parsing
+2016-12-20 config: allow removing multiple peers at once
+2016-12-18 (tag: 0.0.20161218) version: bump snapshot
+2016-12-16 siphash: preserve endian-ness for quick helper
+2016-12-16 ratelimiter: remember newline in error
+2016-12-16 (tag: 0.0.20161216) version: bump snapshot
+2016-12-16 hashtables: use counter and int to ensure forward progress
+2016-12-09 messages: increase header by 3 bytes for alignment
+2016-12-13 siphash: update against upstream submission
+2016-12-14 tools: fix latest-handshake typo in documentation
+2016-12-14 ratelimiter: drop family from action for 4.10
+2016-12-13 tests: avoid non-strict writes via printf
+2016-12-13 noise: update comments
+2016-12-13 types: enforce consistency
+2016-12-13 config: cleanups
+2016-12-13 peer: don't use sockaddr_storage to reduce memory usage
+2016-12-12 hashtables: ensure we get 64-bits of randomness
+2016-12-12 messages: remove unused constants
+2016-12-12 siphash: useless rice
+2016-12-11 crypto: use kernel's bitops functions
+2016-12-11 blake2s: move self tests to correct directory
+2016-12-11 global: move to consistent use of uN instead of uintN_t for kernel code
+2016-12-11 receive: simplify ip header checking logic
+2016-12-11 device: ensure icmp skb length check is done for v6
+2016-12-11 device: allocate tstats in newlink
+2016-12-11 device: clean up xmit error path
+2016-12-11 main: consistent lines
+2016-12-11 device: simplify device_init, since it only returns -EEXIST
+2016-12-11 device: dellink is already implictly unregister_netdevice_queue
+2016-12-11 device: disable ipv6 auto address generation
+2016-12-11 device: rc -> ret
+2016-12-09 (tag: 0.0.20161209) version: bump snapshot
+2016-12-09 cookie: kill redundant forward declaration
+2016-12-09 compat: build dep errors belong here, since it's out of tree specific
+2016-12-09 socket: clear src address when retrying handshake
+2016-12-08 contrib: add wg-config
+2016-12-08 device: traditional if is cleaner than switch for this small
+2016-12-08 device: make suspend code conditional on CONFIG_PM_SLEEP
+2016-12-08 main: cleaner error teardown
+2016-12-08 device: cleaner error teardown
+2016-12-08 timers: add random jitter to handshake retry
+2016-12-08 device: clear all peer ephemeral keys on sleep
+2016-12-07 data: reset tc when resetting skb
+2016-12-06 qemu: bump kernel version
+2016-12-06 build system: add dkms installation
+2016-12-04 tests: directly kill nmap
+2016-12-02 tests: make sure ncat gets killed
+2016-11-29 hashtable: use random number each time
+2016-11-29 (tag: experimental-0.0.20161129) version: bump snapshot
+2016-11-29 send: send packet initiation only after requeuing to prevent race
+2016-11-29 tests: be sure we get all messages
+2016-11-29 siphash: add types to header
+2016-11-29 noise: update to new notation
+2016-11-29 tools: warn about clock going backward
+2016-11-28 main: unify the adjective trifecta
+2016-11-25 ratelimiter: load hashlimit at modinsert time
+2016-11-22 device: conntrack is optional
+2016-11-21 tests: veth does not come up immediately
+2016-11-18 headers: cleanup notices
+2016-11-18 main: add version to dmesg
+2016-11-16 (tag: experimental-0.0.20161116.1) chacha20poly1305: sse/ymm should be implicit
+2016-11-16 (tag: experimental-0.0.20161116) chacha20poly1305: rely on avx and avx2
+2016-11-16 device: better debug message
+2016-11-16 device: we need NONE for libpcap
+2016-11-16 packets: consolidate constants
+2016-11-15 various: nits from willy
+2016-11-15 tests: trim output
+2016-11-15 tests: use private ipv6 addresses
+2016-11-15 socket: ensure that saddr routing can deal with interface removal
+2016-11-14 compat: rearrange
+2016-11-11 debug: cleanup skb printing
+2016-11-10 socket: keep track of src address in sending packets
+2016-11-10 (tag: experimental-0.0.20161110) curve25519: use kmalloc in order to not overflow stack
+2016-11-09 chacha20poly1305: don't forget version header
+2016-11-07 routing-table: mask self for better IP display
+2016-11-07 selftest: add routing table tests for small subnets
+2016-11-07 send: simplify handshake initiation queueing and introduce lock
+2016-11-07 chacha20poly1305: it's just as fast to use these more simple unaligned access helpers
+2016-11-07 socket: use more reasonable skb padding
+2016-11-06 data: only uses kmem_cache for parallism
+2016-11-06 debug: support dynamic debug on skb addr
+2016-11-06 cookie: avoid void pointer arithmatic
+2016-11-06 send: remove redundant time stamp
+2016-11-06 qemu: kasan needs more memory
+2016-11-06 qemu: use sparsemem always, for kasan
+2016-11-06 socket: release dst on routing loop
+2016-11-06 data: squelch compiler warning on PARALLEL=n
+2016-11-06 data: we care about per-peer, not per-device, inflight encryptions
+2016-11-05 (tag: experimental-0.0.20161105) chacha20poly1305: cleanup magic constants
+2016-11-05 c89: the static keyword is okay in c99, but not in c89
+2016-11-05 tools: chill modern gcc out
+2016-11-05 qemu: fail if module selftests fail
+2016-11-05 qemu: move marker to top and flush
+2016-11-05 qemu: work around termio race condition
+2016-11-05 compat: fix variable assumptions
+2016-11-05 qemu: move build outside of kernel dir to avoid kernel's make clean
+2016-11-05 socket: big refactoring
+2016-11-04 socket: route() returns an error pointer, not NULL on failure
+2016-11-04 compat: some grsec have get_random_long; others do not
+2016-11-04 data: use a memory cache for parallel ctx
+2016-11-04 data: keep FPU on when possible
+2016-11-04 send: queue bundles on same CPU
+2016-11-04 data: use smaller types
+2016-11-04 data: take reference to peer
+2016-11-04 compat: stub out dst_cache for old kernels
+2016-11-04 socket: use dst_cache instead of handrolled cache
+2016-11-03 (tag: experimental-0.0.20161103) chacha20poly1305: src is different from dst on last piece
+2016-11-03 device: use ARPHDR_VOID instead of ARPHDR_NONE
+2016-11-03 qemu: newer default kernel
+2016-11-02 timers: take reference like a lookup table
+2016-11-02 (tag: experimental-0.0.20161102) tools: abstract pkg-config to PKG_CONFIG
+2016-11-02 tools: everybody hates automatic stripping
+2016-11-02 kref: elide checks
+2016-11-01 data: do not allow usage of keypair just before hash removal
+2016-11-01 peer: kref is most likely to succeed
+2016-10-23 (tag: experimental-0.0.20161025) compat: grsecurity backports get_random_long
+2016-10-23 data: reset all packet fields like tun.c
+2016-10-22 device: better debug message for unroutable packets
+2016-10-22 compat: support PaX constify plugin
+2016-10-21 uapi.h: public_key field is a getter
+2016-10-19 receive: always send confirmation, even if queue is empty
+2016-10-19 timers: only have initiator rekey
+2016-10-19 timers: always delay handshakes for responder
+2016-10-19 timers: move constants to header
+2016-10-19 timers: kill half-open handshakes after a while
+2016-10-19 timers: avoid thundering herd for simultaneous initiation
+2016-10-19 debug: keep alive -> keepalive
+2016-10-19 noise: comment/document the key swapping
+2016-10-14 (tag: experimental-0.0.20161014) send: ensure that rekey retries are staggered
+2016-10-14 device: show debug message when no peer has allowed-ips for packet
+2016-10-05 send: requeue jobs for later if padata is full
+2016-10-04 compat: akpm merged this to 4.9
+2016-10-02 send: only avoid parallel path when there aren't inflight jobs
+2016-09-29 (tag: experimental-0.0.20161001) remote-run: reflect recent makefile changes
+2016-09-29 git: organize ignore files
+2016-09-29 compat: Isolate more functions
+2016-09-29 Rework headers and includes
+2016-09-20 poly1305: optimize unaligned access
+2016-08-30 tools: allow multiple AllowedIPs invocations
+2016-08-29 send: properly encapsulate ECN
+2016-08-29 netns: remove dangling $@
+2016-08-24 examples: add key extractor
+2016-08-23 examples: add nat-hole-punching
+2016-08-22 socket: use isdigit
+2016-08-22 routingtable: hyphen was ugly
+2016-08-21 hashtables: use rdrand() instead of counter
+2016-08-21 tests: test jumbo frames with more transfer
+2016-08-16 qemu: enhancements
+2016-08-16 send: needless debugging check
+2016-08-12 tests: add crypto-RP filter test
+2016-08-10 main: load driver late in boot process when debugging
+2016-08-10 main: fix typo
+2016-08-09 qemu: lock distfiles
+2016-08-09 qemu: allow testing with RCs
+2016-08-09 ratelimiter: hard-depend on runtime dependencies
+2016-08-08 (tag: experimental-0.0.20160808) ratelimiter: do not require IPv6
+2016-07-25 tests: use makefile and expand greatly
+2016-08-08 persistent-keepalive: change range to [1,65535]
+2016-08-03 Kbuild: move module deps out of tests/
+2016-08-02 selftest: move to subfolder
+2016-08-01 tools: use correct headers in ipc
+2016-07-28 tools: do not show private keys in pretty output
+2016-07-28 contrib: move patchers to contrib/kernel-tree
+2016-07-27 Makefile: check tools as part of make check
+2016-07-27 uapi: typeof is not necessary
+2016-07-27 c: specify static array size in function params
+2016-07-26 timers: use more clear pow macro
+2016-07-23 ratelimiter: correct comment
+2016-07-22 timers: upstream removed the slack concept
+2016-07-22 (tag: experimental-0.0.20160722, patch-queue/upstream) tools: use stream instead of seqpacket
+2016-07-22 tools: Use seqpacket instead of dgram
+2016-07-05 index hashtable: run random indices through siphash
+2016-07-11 cookie: do not expose csprng directly
+2016-07-22 tools: add -MP to makefile
+2016-07-22 socket: fix compat for 4.1 v6 sockets
+2016-07-21 socket: reset IPv4 socket to NULL after free
+2016-07-21 socket: simpler debug message
+2016-07-21 tools: add default cflag
+2016-07-21 tools: propagate set errno
+2016-07-21 tools: abstract sockets are dangerous
+2016-07-21 (tag: experimental-0.0.20160721) Kconfig: select IP6_NF_IPTABLES if using IPV6
+2016-07-20 tools: rename kernel to ipc
+2016-07-20 tools: support horrible freebsd/osx/unix semantics
+2016-07-19 tools: first additions of userspace integration
+2016-07-15 build system: revamp building and configuration
+2016-07-13 tests: improve test suite and add qemu tester
+2016-07-11 tools: fix numbering in man page
+2016-07-10 (tag: experimental-0.0.20160711) receive: assume we usually succeed with userspace
+2016-07-10 receive: no need to test for !len
+2016-07-10 timers: apply slack to hotpath timers
+2016-07-10 timers: move timer calls out of hot loop
+2016-07-10 timers: document conditions for calling
+2016-07-10 persistent keepalive: use unsigned long to avoid multiplication in hotpath
+2016-07-08 persistent keepalive: use authenticated keepalives
+2016-07-08 keepalives: only queue keepalive when queue is empty
+2016-07-08 examples: update ncat-client-server readme
+2016-07-08 timers: do not consider keepalives to be data sent
+2016-07-08 timers: rename *authorized* functions to *authenticated*
+2016-07-08 (tag: experimental-0.0.20160708.1) persistent keepalive: start sending immediately
+2016-07-08 (tag: experimental-0.0.20160708) persistent keepalive: enable in an example
+2016-07-08 persistent keepalive: documentation
+2016-07-08 persistent keepalive: add userspace support
+2016-07-08 persistent keepalive: add kernel mechanism
+2016-07-07 go test: don't rely on undefined append behavior
+2016-07-07 rust test: actually use tai64n
+2016-07-07 go test: actually use TAI64N
+2016-07-07 go test: don't use 1 as icmp ids
+2016-07-07 go test: dynamically calculate ip checksum
+2016-07-06 go test: add ICMP ping
+2016-07-07 external-tests: switch to demo server
+2016-07-07 curve25519: unneeded zeros variable
+2016-07-07 go test: put nonce at correct location
+2016-07-06 go test: make more idiomatic
+2016-07-06 tools: use pkg-config in Makefile
+2016-07-05 device: move unlikely check to if clause
+2016-07-05 contrib: organize example scripts and add synergy
+2016-07-03 receive: protect against impossible conditions
+2016-07-03 tools: always fallback to /dev/urandom
+2016-07-03 tools: improve error reporting and detection
+2016-07-02 tai64n: don't forget to add 2^62, to be in spec
+2016-07-01 contrib: remove extraneous cruft
+2016-07-01 (tag: experimental-0.0.20160630) wg.8: wording tweaks
+2016-07-01 receive: error conditions are unlikely
+2016-06-30 Readme: the documentation moved to .io
+2016-06-30 Readme: use https instead of http
+2016-06-30 Makefile: Add more verbose dependency errors
+2016-06-29 device init: free wq after padata
+2016-06-29 chacha20poly1305: use more standard way of testing FPU features
+2016-06-29 device: remove updating of trans_start
+2016-06-29 Kconfig patching: do not match on NETFILTER
+2016-06-29 Kconfig: more fully select dependencies
+2016-06-25 tests: make fatal
+2016-06-20 nonce: switch to RFC6479 to better support packet reordering
+2015-06-05 Initial commit
