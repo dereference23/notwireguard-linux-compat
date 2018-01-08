@@ -1,3 +1,4 @@
-# This example project directory indicates which files are generated files by
+# The example project directories indicate which files are generated files by
 # including a .gitignore file:
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/extract-keys/.gitignore
+wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/keygen-html/.gitignore
