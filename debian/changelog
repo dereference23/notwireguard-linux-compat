@@ -1,3 +1,9 @@
+wireguard (0.0.20171221-4) unstable; urgency=medium
+
+  * d/copyright: annotate a few additional files
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 12 Jan 2018 16:51:08 -0500
+
 wireguard (0.0.20171221-3) unstable; urgency=medium
 
   * make inter-package recommendations tightly versioned
