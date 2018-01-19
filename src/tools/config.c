@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0
  *
- * Copyright (C) 2015-2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
 #include <arpa/inet.h>
@@ -310,6 +310,7 @@ static inline bool parse_allowedips(struct wgpeer *peer, struct wgallowedip **la
 		}
 
 		if (!parse_ip(new_allowedip, ip)) {
+			free(new_allowedip);
 			free(saved_entry);
 			free(mutable);
 			return false;
