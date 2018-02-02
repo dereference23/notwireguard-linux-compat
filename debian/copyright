@@ -13,13 +13,17 @@ Copyright: 2015 Martin Willi,
  2016 OpenSSL Project Authors
 License: BSD-or-GPL-CRYPTOGAMS
 
+Files: src/selftest/poly1305.h
+Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+ 2016-2017 The OpenSSL Project Authors
+License: GPL-2
+
 Files: src/compat/dst_cache/dst_cache.c
 Copyright: 2016 Paolo Abeni <pabeni@redhat.com>
 License: GPL-2+
 
 Files: contrib/examples/keygen-html/src/curve25519_generate.c
-Copyright: 2015-2016 The fiat-crypto Authors,
- 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+Copyright: 2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
 
 Files: src/compat/memneq/memneq.c
