@@ -1,3 +1,11 @@
+wireguard (0.0.20180202-1) unstable; urgency=medium
+
+  * new upstream snapshot release
+  * loosen versioned dependencies of wireguard metapackage
+  * d/copyright: update
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 02 Feb 2018 15:26:24 -0500
+
 wireguard (0.0.20180118-1) unstable; urgency=medium
 
   * New upstream snapshot release
