@@ -48,7 +48,6 @@
 #define SOCKET_BUFFER_SIZE 8192
 #endif
 
-
 struct inflatable_buffer {
 	char *buffer;
 	char *next;
@@ -57,6 +56,7 @@ struct inflatable_buffer {
 	size_t pos;
 };
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
 static int add_next_to_inflatable_buffer(struct inflatable_buffer *buffer)
 {
 	size_t len, expand_to;
@@ -111,16 +111,16 @@ static FILE *userspace_interface_file(const char *interface)
 	int fd = -1, ret;
 	FILE *f = NULL;
 
-	ret = -EINVAL;
+	errno = EINVAL;
 	if (strchr(interface, '/'))
 		goto out;
-	ret = snprintf(addr.sun_path, sizeof(addr.sun_path) - 1, SOCK_PATH "%s" SOCK_SUFFIX, interface);
+	ret = snprintf(addr.sun_path, sizeof(addr.sun_path), SOCK_PATH "%s" SOCK_SUFFIX, interface);
 	if (ret < 0)
 		goto out;
 	ret = stat(addr.sun_path, &sbuf);
 	if (ret < 0)
 		goto out;
-	ret = -EBADF;
+	errno = EBADF;
 	if (!S_ISSOCK(sbuf.st_mode))
 		goto out;
 
@@ -135,12 +135,13 @@ static FILE *userspace_interface_file(const char *interface)
 		goto out;
 	}
 	f = fdopen(fd, "r+");
-	if (!f)
-		ret = -errno;
+	if (f)
+		errno = 0;
 out:
-	if (ret && fd >= 0)
-		close(fd);
+	ret = -errno;
 	if (ret) {
+		if (fd >= 0)
+			close(fd);
 		errno = -ret;
 		return NULL;
 	}
@@ -155,7 +156,7 @@ static bool userspace_has_wireguard_interface(const char *interface)
 
 	if (strchr(interface, '/'))
 		return false;
-	if (snprintf(addr.sun_path, sizeof(addr.sun_path) - 1, SOCK_PATH "%s" SOCK_SUFFIX, interface) < 0)
+	if (snprintf(addr.sun_path, sizeof(addr.sun_path), SOCK_PATH "%s" SOCK_SUFFIX, interface) < 0)
 		return false;
 	if (stat(addr.sun_path, &sbuf) < 0)
 		return false;
@@ -834,8 +835,10 @@ static int parse_device(const struct nlattr *attr, void *data)
 			device->ifindex = mnl_attr_get_u32(attr);
 		break;
 	case WGDEVICE_A_IFNAME:
-		if (!mnl_attr_validate(attr, MNL_TYPE_STRING))
+		if (!mnl_attr_validate(attr, MNL_TYPE_STRING)) {
 			strncpy(device->name, mnl_attr_get_str(attr), sizeof(device->name) - 1);
+			device->name[sizeof(device->name) - 1] = '\0';
+		}
 		break;
 	case WGDEVICE_A_PRIVATE_KEY:
 		if (mnl_attr_get_payload_len(attr) == sizeof(device->private_key)) {
