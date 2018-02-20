@@ -1,3 +1,13 @@
+wireguard (0.0.20180218-1) unstable; urgency=medium
+
+  * new upstream snapshot release
+  * update Jason's signing key
+  * d/control: set Rules-Requires-Root: no
+  * convert packaging VCS branchnames to DEP-14
+  * d/copyright: embeddable-wg-library is LGPL-2.1+
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 20 Feb 2018 14:51:20 -0800
+
 wireguard (0.0.20180202-1) unstable; urgency=medium
 
   * new upstream snapshot release
