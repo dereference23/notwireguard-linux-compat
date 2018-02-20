@@ -7,6 +7,15 @@ Files: *
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
 
+Files: contrib/examples/embeddable-wg-library/*
+Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+License: LGPL-2.1+
+
+Files: contrib/examples/embeddable-wg-library/wireguard.c
+Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+ 2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>
+License: LGPL-2.1+
+
 Files: src/crypto/chacha20poly1305.c
 Copyright: 2015 Martin Willi,
  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
@@ -130,6 +139,16 @@ License: GPL-2+
  .
  On Debian systems, the complete text of the GNU General Public License
  version 2 can be found in file "/usr/share/common-licenses/GPL-2".
+
+License: LGPL-2.1+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU Lesser General Public License as
+ published by the Free Software Foundation; either version 2.1 of the
+ License, or (at your option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 2.1 can be found in file
+ "/usr/share/common-licenses/LGPL-2.1".
 
 License: BSD-3-clause
  Redistribution and use in source and binary forms of this file, with or
