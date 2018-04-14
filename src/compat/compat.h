@@ -25,6 +25,9 @@
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
 #define ISOPENSUSE42
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+#define ISOPENSUSE15
+#endif
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
@@ -56,7 +59,10 @@
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#include <linux/rcupdate.h>
+#ifndef RCU_LOCKDEP_WARN
 #define RCU_LOCKDEP_WARN(cond, message) rcu_lockdep_assert(!(cond), message)
+#endif
 #endif
 
 #if ((LINUX_VERSION_CODE > KERNEL_VERSION(3, 19, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 6)) || \
@@ -271,7 +277,7 @@ static const struct in6_addr our_in6addr_any = IN6ADDR_ANY_INIT;
 #define in6addr_any our_in6addr_any
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0) && !defined(ISOPENSUSE15)
 #include <linux/completion.h>
 #include <linux/random.h>
 #include <linux/errno.h>
@@ -314,7 +320,7 @@ static inline int wait_for_random_bytes(void)
 	return 0;
 }
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0) && !defined(ISOPENSUSE15)
 static inline int get_random_bytes_wait(void *buf, int nbytes)
 {
 	int ret = wait_for_random_bytes();
@@ -431,7 +437,7 @@ static inline void kvfree_ours(const void *addr)
 #define priv_destructor destructor
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 13, 0) && !defined(ISOPENSUSE15)
 #define newlink(a,b,c,d,e) newlink(a,b,c,d)
 #endif
 
@@ -482,7 +488,7 @@ static inline struct nlattr **genl_family_attrbuf(const struct genl_family *fami
 #else
 #define ___COMPAT_NETLINK_DUMP_BLOCK return get_device_dump_real(skb, cb);
 #endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 8) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 25) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)) || LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 87)
 #define get_device_dump(a, b) get_device_dump_real(a, b); \
 static int get_device_dump(a, b) { \
 	struct wireguard_device *wg = (struct wireguard_device *)cb->args[0]; \
