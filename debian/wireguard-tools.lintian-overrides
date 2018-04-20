@@ -3,3 +3,4 @@
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/extract-keys/.gitignore
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/keygen-html/.gitignore
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/embeddable-wg-library/.gitignore
+wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/extract-handshakes/.gitignore
