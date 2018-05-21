@@ -26,6 +26,16 @@ CONFIG_FILE=""
 PROGRAM="${0##*/}"
 ARGS=( "$@" )
 
+cmd() {
+	echo "[#] $*" >&2
+	"$@"
+}
+
+die() {
+	echo "$PROGRAM: $*" >&2
+	exit 1
+}
+
 parse_options() {
 	local interface_section=0 line key value stripped
 	CONFIG_FILE="$1"
@@ -68,27 +78,17 @@ read_bool() {
 	esac
 }
 
-cmd() {
-	echo "[#] $*" >&2
-	"$@"
-}
-
-die() {
-	echo "$PROGRAM: $*" >&2
-	exit 1
-}
-
 auto_su() {
-	[[ $UID == 0 ]] || exec sudo -p "$PROGRAM must be run as root. Please enter the password for %u to continue: " "$SELF" "${ARGS[@]}"
+	[[ $UID == 0 ]] || exec sudo -p "$PROGRAM must be run as root. Please enter the password for %u to continue: " -- "$BASH" -- "$SELF" "${ARGS[@]}"
 }
 
 add_if() {
 	local ret
 	if ! cmd ip link add "$INTERFACE" type wireguard; then
 		ret=$?
-		[[ -e /sys/module/wireguard ]] || ! command -v wireguard-go >/dev/null && return $ret
+		[[ -e /sys/module/wireguard ]] || ! command -v "${WG_QUICK_USERSPACE_IMPLEMENTATION:-wireguard-go}" >/dev/null && exit $ret
 		echo "[!] Missing WireGuard kernel module. Falling back to slow userspace implementation."
-		cmd wireguard-go "$INTERFACE"
+		cmd "${WG_QUICK_USERSPACE_IMPLEMENTATION:-wireguard-go}" "$INTERFACE"
 	fi
 }
 
