@@ -148,9 +148,9 @@ up_if() {
 
 add_addr() {
 	if [[ $1 == *:* ]]; then
-		cmd ifconfig "$REAL_INTERFACE" inet6 "$1"
+		cmd ifconfig "$REAL_INTERFACE" inet6 "$1" alias
 	else
-		cmd ifconfig "$REAL_INTERFACE" inet "$1" "${1%%/*}"
+		cmd ifconfig "$REAL_INTERFACE" inet "$1" "${1%%/*}" alias
 	fi
 }
 
@@ -293,7 +293,8 @@ monitor_daemon() {
 	echo "[+] Backgrounding route monitor" >&2
 	(trap 'del_routes; del_dns; exit 0' INT TERM EXIT
 	exec >/dev/null 2>&1
-	local event
+	local event pid=$BASHPID
+	[[ ${#DNS[@]} -gt 0 ]] && trap set_dns ALRM
 	# TODO: this should also check to see if the endpoint actually changes
 	# in response to incoming packets, and then call set_endpoint_direct_route
 	# then too. That function should be able to gracefully cleanup if the
@@ -303,7 +304,10 @@ monitor_daemon() {
 		ifconfig "$REAL_INTERFACE" >/dev/null 2>&1 || break
 		[[ $AUTO_ROUTE4 -eq 1 || $AUTO_ROUTE6 -eq 1 ]] && set_endpoint_direct_route
 		[[ -z $MTU ]] && set_mtu
-		[[ ${#DNS[@]} -gt 0 ]] && set_dns
+		if [[ ${#DNS[@]} -gt 0 ]]; then
+			set_dns
+			sleep 2 && kill -ALRM $pid 2>/dev/null &
+		fi
 	done < <(route -n monitor)) & disown
 }
 
@@ -335,12 +339,12 @@ set_config() {
 }
 
 save_config() {
-	# TODO: actually save addresses and DNS by running ifconfig and networksetup
 	local old_umask new_config current_config address cmd
 	new_config=$'[Interface]\n'
-	for address in "${ADDRESSES[@]}"; do
-		new_config+="Address = $address"$'\n'
-	done
+	while read -r address; do
+		[[ $address =~ inet6?\ ([^ ]+) ]] && new_config+="Address = ${BASH_REMATCH[1]}"$'\n'
+	done < <(ifconfig "$REAL_INTERFACE")
+	# TODO: actually determine current DNS for interface
 	for address in "${DNS[@]}"; do
 		new_config+="DNS = $address"$'\n'
 	done

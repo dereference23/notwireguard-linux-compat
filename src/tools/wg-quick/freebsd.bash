@@ -146,9 +146,11 @@ up_if() {
 }
 
 add_addr() {
-	local family=inet
-	[[ $1 == *:* ]] && family=inet6
-	cmd ifconfig "$INTERFACE" "$family" "$1" alias
+	if [[ $1 == *:* ]]; then
+		cmd ifconfig "$INTERFACE" inet6 "$1" alias
+	else
+		cmd ifconfig "$INTERFACE" inet "$1" "${1%%/*}" alias
+	fi
 }
 
 set_mtu() {
@@ -309,12 +311,14 @@ set_config() {
 }
 
 save_config() {
-	# TODO: actually save addresses by running ifconfig
 	local old_umask new_config current_config address cmd
 	new_config=$'[Interface]\n'
-	for address in "${ADDRESSES[@]}"; do
+	{ read -r _; while read -r _ _ _ address _; do
 		new_config+="Address = $address"$'\n'
-	done
+	done } < <(netstat -I "$INTERFACE" -n -W -f inet)
+	{ read -r _; while read -r _ _ _ address _; do
+		new_config+="Address = $address"$'\n'
+	done } < <(netstat -I "$INTERFACE" -n -W -f inet6)
 	while read -r address; do
 		[[ $address =~ ^nameserver\ ([a-zA-Z0-9_=+:%.-]+)$ ]] && new_config+="DNS = ${BASH_REMATCH[1]}"$'\n'
 	done < <(resolvconf -l "$INTERFACE" 2>/dev/null)
