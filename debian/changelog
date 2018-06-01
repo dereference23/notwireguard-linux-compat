@@ -1,3 +1,10 @@
+wireguard (0.0.20180531-1) unstable; urgency=medium
+
+  * New upstream snapshot release
+  * update debian/copyright
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 01 Jun 2018 16:08:33 -0400
+
 wireguard (0.0.20180524-1) unstable; urgency=medium
 
   * New upstream snapshot release
