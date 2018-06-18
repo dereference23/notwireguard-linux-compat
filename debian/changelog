@@ -1,3 +1,9 @@
+wireguard (0.0.20180613-2) unstable; urgency=medium
+
+  * avoid requiring glibc-2.25 for wireguard-tools
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 18 Jun 2018 14:18:31 -0400
+
 wireguard (0.0.20180613-1) unstable; urgency=medium
 
   * New upstream snapshot release
