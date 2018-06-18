@@ -1,0 +1,35 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 18 Jun 2018 14:11:10 -0400
+Subject: Avoid requiring glibc 2.25 for wireguard-tools
+
+Upstream's instructions (https://www.wireguard.com/install/) suggest
+enabling the debian unstable repository to run wireguard.
+
+Without this patch, the current version of wireguard-tools will end up
+with a dependency on glibc 2.25 because of the invocation of
+getentropy.
+
+We avoid this situation (and fall through to the syscall interface
+for the Linux kernel) by omitting the test here.
+
+If we move wireguard into testing (and from there to
+stretch-backports) then i think we can convince upstream to change
+their installation instructions to refer to stretch-backports, and we
+can remove this patch.
+---
+ src/tools/genkey.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/tools/genkey.c b/src/tools/genkey.c
+index 04de2ba..b1a29b6 100644
+--- a/src/tools/genkey.c
++++ b/src/tools/genkey.c
+@@ -26,7 +26,7 @@ static inline ssize_t get_random_bytes(uint8_t *out, size_t len)
+ 	ssize_t ret;
+ 	int fd;
+ 
+-#if defined(__OpenBSD__) || defined(__APPLE__) || (defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25)))
++#if defined(__OpenBSD__) || defined(__APPLE__)
+ 	ret = getentropy(out, len);
+ 	if (!ret)
+ 		return len;
