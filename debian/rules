@@ -13,7 +13,7 @@ override_dh_auto_install-indep:
 	$(MAKE) -C src DESTDIR=../debian/wireguard-dkms DKMSDIR=/usr/src/wireguard-$(DEB_VERSION)/ dkms-install
 
 override_dh_auto_build-arch:
-	$(MAKE) -C src/tools $(WIREGUARD_ARGS)
+	dh_auto_build --sourcedirectory=src/tools -- $(WIREGUARD_ARGS)
 
 override_dh_auto_install-arch:
 	$(MAKE) -C src/tools DESTDIR=../../debian/wireguard-tools $(WIREGUARD_ARGS) install
