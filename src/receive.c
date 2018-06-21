@@ -10,6 +10,7 @@
 #include "messages.h"
 #include "cookie.h"
 #include "socket.h"
+#include "crypto/simd.h"
 
 #include <linux/ip.h>
 #include <linux/ipv6.h>
@@ -378,7 +379,6 @@ void packet_rx_worker(struct work_struct *work)
 	bool free;
 
 	local_bh_disable();
-	spin_lock_bh(&queue->ring.consumer_lock);
 	while ((skb = __ptr_ring_peek(&queue->ring)) != NULL && (state = atomic_read(&PACKET_CB(skb)->state)) != PACKET_STATE_UNCRYPTED) {
 		__ptr_ring_discard_one(&queue->ring);
 		peer = PACKET_PEER(skb);
@@ -405,8 +405,13 @@ next:
 		peer_put(peer);
 		if (unlikely(free))
 			dev_kfree_skb(skb);
+
+		/* Don't totally kill scheduling latency by keeping preemption disabled forever. */
+		if (need_resched()) {
+			local_bh_enable();
+			local_bh_disable();
+		}
 	}
-	spin_unlock_bh(&queue->ring.consumer_lock);
 	local_bh_enable();
 }
 
@@ -414,15 +419,15 @@ void packet_decrypt_worker(struct work_struct *work)
 {
 	struct crypt_queue *queue = container_of(work, struct multicore_worker, work)->ptr;
 	struct sk_buff *skb;
-	bool have_simd = chacha20poly1305_init_simd();
+	bool have_simd = simd_get();
 
 	while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
 		enum packet_state state = likely(skb_decrypt(skb, &PACKET_CB(skb)->keypair->receiving, have_simd)) ? PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
-
 		queue_enqueue_per_peer(&PACKET_PEER(skb)->rx_queue, skb, state);
+		have_simd = simd_relax(have_simd);
 	}
 
-	chacha20poly1305_deinit_simd(have_simd);
+	simd_put(have_simd);
 }
 
 static void packet_consume_data(struct wireguard_device *wg, struct sk_buff *skb)
@@ -465,8 +470,8 @@ void packet_receive(struct wireguard_device *wg, struct sk_buff *skb)
 	case cpu_to_le32(MESSAGE_HANDSHAKE_COOKIE): {
 		int cpu;
 
-		if (skb_queue_len(&wg->incoming_handshakes) > MAX_QUEUED_INCOMING_HANDSHAKES) {
-			net_dbg_skb_ratelimited("%s: Too many handshakes queued, dropping packet from %pISpfsc\n", wg->dev->name, skb);
+		if (skb_queue_len(&wg->incoming_handshakes) > MAX_QUEUED_INCOMING_HANDSHAKES || unlikely(!rng_is_initialized())) {
+			net_dbg_skb_ratelimited("%s: Dropping handshake packet from %pISpfsc\n", wg->dev->name, skb);
 			goto err;
 		}
 		skb_queue_tail(&wg->incoming_handshakes, skb);
