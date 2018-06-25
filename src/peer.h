@@ -50,7 +50,7 @@ struct wireguard_peer {
 	u64 rx_bytes, tx_bytes;
 	struct timer_list timer_retransmit_handshake, timer_send_keepalive, timer_new_handshake, timer_zero_key_material, timer_persistent_keepalive;
 	unsigned int timer_handshake_attempts;
-	unsigned long persistent_keepalive_interval;
+	u16 persistent_keepalive_interval;
 	bool timers_enabled, timer_need_another_keepalive, sent_lastminute_handshake;
 	struct timespec walltime_last_handshake;
 	struct kref refcount;
