@@ -1,3 +1,10 @@
+wireguard (0.0.20180708-1) unstable; urgency=medium
+
+  * New upstream snapshot release
+  * Standards-Version: bumped to 4.1.5 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 09 Jul 2018 15:03:15 -0400
+
 wireguard (0.0.20180625-1) unstable; urgency=medium
 
   * New upstream snapshot release
