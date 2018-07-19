@@ -342,7 +342,7 @@ static void packet_consume_data_done(struct sk_buff *skb, struct endpoint *endpo
 	if (unlikely(routed_peer != peer))
 		goto dishonest_packet_peer;
 
-	if (unlikely(netif_receive_skb(skb) == NET_RX_DROP)) {
+	if (unlikely(napi_gro_receive(&peer->napi, skb) == NET_RX_DROP)) {
 		++dev->stats.rx_dropped;
 		net_dbg_ratelimited("%s: Failed to give packet to userspace from peer %llu (%pISpfsc)\n", dev->name, peer->internal_id, &peer->endpoint.addr);
 	} else
@@ -378,6 +378,9 @@ int packet_rx_poll(struct napi_struct *napi, int budget)
 	enum packet_state state;
 	int work_done = 0;
 	bool free;
+
+	if (unlikely(budget <= 0))
+		return 0;
 
 	while ((skb = __ptr_ring_peek(&queue->ring)) != NULL && (state = atomic_read(&PACKET_CB(skb)->state)) != PACKET_STATE_UNCRYPTED) {
 		__ptr_ring_discard_one(&queue->ring);
