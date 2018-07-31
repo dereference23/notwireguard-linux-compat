@@ -4,3 +4,7 @@ wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/keygen-html/.gitignore
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/embeddable-wg-library/.gitignore
 wireguard-tools: package-contains-vcs-control-file usr/share/doc/wireguard-tools/examples/extract-handshakes/.gitignore
+# upstream prefers the less-user-friendly locked-down /etc/wireguard by default
+# to avoid leaking local system secrets.  I've adjusted the debian package to follow its lead.
+# see also https://bugs.debian.org/902831
+wireguard-tools: non-standard-dir-perm etc/wireguard/ 0700 != 0755
