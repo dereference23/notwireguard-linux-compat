@@ -133,6 +133,12 @@ bool index_hashtable_replace(struct index_hashtable *table, struct index_hashtab
 	spin_lock_bh(&table->lock);
 	new->index = old->index;
 	hlist_replace_rcu(&old->index_hash, &new->index_hash);
+
+	/* Calling init here NULLs out index_hash, and in fact after this function returns,
+	 * it's theoretically possible for this to get reinserted elsewhere. That means
+	 * the RCU lookup below might either terminate early or jump between buckets, in which
+	 * case the packet simply gets dropped, which isn't terrible.
+	 */
 	INIT_HLIST_NODE(&old->index_hash);
 	spin_unlock_bh(&table->lock);
 	return true;
@@ -146,7 +152,7 @@ void index_hashtable_remove(struct index_hashtable *table, struct index_hashtabl
 }
 
 /* Returns a strong reference to a entry->peer */
-struct index_hashtable_entry *index_hashtable_lookup(struct index_hashtable *table, const enum index_hashtable_type type_mask, const __le32 index)
+struct index_hashtable_entry *index_hashtable_lookup(struct index_hashtable *table, const enum index_hashtable_type type_mask, const __le32 index, struct wireguard_peer **peer)
 {
 	struct index_hashtable_entry *iter_entry, *entry = NULL;
 
@@ -160,7 +166,9 @@ struct index_hashtable_entry *index_hashtable_lookup(struct index_hashtable *tab
 	}
 	if (likely(entry)) {
 		entry->peer = peer_get_maybe_zero(entry->peer);
-		if (unlikely(!entry->peer))
+		if (likely(entry->peer))
+			*peer = entry->peer;
+		else
 			entry = NULL;
 	}
 	rcu_read_unlock_bh();
