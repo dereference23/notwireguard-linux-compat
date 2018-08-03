@@ -1,3 +1,9 @@
+wireguard (0.0.20180802-1) unstable; urgency=medium
+
+  * New upstream snapshot release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 03 Aug 2018 09:31:12 -0400
+
 wireguard (0.0.20180731-2) unstable; urgency=medium
 
   * ship /etc/wireguard mode 0700 by default (closes: #902831)
