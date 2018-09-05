@@ -1,9 +1,17 @@
+wireguard (0.0.20180904-1) unstable; urgency=medium
+
+  * New upstream snapshot release
+  * Standards-Version: bump to 4.2.1 (no changes needed)
+  * debian/copyright: update move of sources to zinc
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 05 Sep 2018 16:24:17 -0400
+
 wireguard (0.0.20180809-1) unstable; urgency=medium
 
   * Standards-Version: bump to 4.2.0 (no changes needed)
   * New upstream snapshot release
 
- -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 13 Aug 2018 10:59:15 -0400
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 05 Sep 2018 16:24:06 -0400
 
 wireguard (0.0.20180802-1) unstable; urgency=medium
 
