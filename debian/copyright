@@ -16,12 +16,12 @@ Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
  2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>
 License: LGPL-2.1+
 
-Files: src/crypto/poly1305.c
+Files: src/crypto/zinc/poly1305/poly1305.c
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2016 OpenSSL Project Authors
 License: OpenSSL-or-BSD-or-GPL
 
-Files: src/selftest/poly1305.h
+Files: src/crypto/zinc/selftest/poly1305.h
 Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
  2016-2017 The OpenSSL Project Authors
 License: GPL-2
@@ -46,22 +46,22 @@ Files: contrib/external-tests/python/main.py
 Copyright: 2018 Piotr Lizonczyk <plizonczyk.public@gmail.com>
 License: MIT
 
-Files: src/crypto/blake2s-x86_64.S
+Files: src/crypto/zinc/blake2s/blake2s-x86_64.S
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2017 Samuel Neves <sneves@dei.uc.pt>
 License: GPL-2
 
-Files: src/crypto/chacha20-arm.S
- src/crypto/chacha20-arm64.S
- src/crypto/poly1305-arm.S
- src/crypto/poly1305-arm64.S
- src/crypto/poly1305-mips64.S
+Files: src/crypto/zinc/chacha20/chacha20-arm.S
+ src/crypto/zinc/chacha20/chacha20-arm64.S
+ src/crypto/zinc/poly1305/poly1305-arm.S
+ src/crypto/zinc/poly1305/poly1305-arm64.S
+ src/crypto/zinc/poly1305/poly1305-mips64.S
 Copyright: 2017-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2016 OpenSSL Project Authors
 License: OpenSSL-or-BSD-or-GPL
 
-Files:  src/crypto/chacha20-x86_64.S
- src/crypto/poly1305-x86_64.S
+Files: src/crypto/zinc/chacha20/chacha20-x86_64.S
+ src/crypto/zinc/poly1305/poly1305-x86_64.S
 Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
  2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2016 OpenSSL Project Authors
@@ -73,12 +73,12 @@ Copyright: 2016-2017 INRIA and Microsoft Corporation,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: BSD-3-clause
 
-Files: src/crypto/curve25519-fiat32.h
+Files: src/crypto/zinc/curve25519/curve25519-fiat32.h
 Copyright: 2015-2016 The fiat-crypto Authors,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
 
-Files: src/crypto/curve25519-hacl64.h
+Files: src/crypto/zinc/curve25519/curve25519-hacl64.h
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
