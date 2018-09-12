@@ -16,14 +16,9 @@ Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
  2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>
 License: LGPL-2.1+
 
-Files: src/crypto/zinc/poly1305/poly1305.c
-Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
- 2016 OpenSSL Project Authors
-License: OpenSSL-or-BSD-or-GPL
-
 Files: src/crypto/zinc/selftest/poly1305.h
-Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
- 2016-2017 The OpenSSL Project Authors
+Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
+ 2006-2017 CRYPTOGAMS by <appro@openssl.org>
 License: GPL-2
 
 Files: src/compat/dst_cache/dst_cache.c
@@ -51,21 +46,22 @@ Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2017 Samuel Neves <sneves@dei.uc.pt>
 License: GPL-2
 
-Files: src/crypto/zinc/chacha20/chacha20-arm.S
+Files: src/crypto/zinc/poly1305/poly1305.c
+ src/crypto/zinc/chacha20/chacha20-arm.S
  src/crypto/zinc/chacha20/chacha20-arm64.S
  src/crypto/zinc/poly1305/poly1305-arm.S
  src/crypto/zinc/poly1305/poly1305-arm64.S
  src/crypto/zinc/poly1305/poly1305-mips64.S
-Copyright: 2017-2018 Jason A Donenfeld <Jason@zx2c4.com>,
- 2016 OpenSSL Project Authors
-License: OpenSSL-or-BSD-or-GPL
+Copyright: 2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
+ 2006-2017 CRYPTOGAMS by <appro@openssl.org>
+License: BSD-or-GPL
 
 Files: src/crypto/zinc/chacha20/chacha20-x86_64.S
  src/crypto/zinc/poly1305/poly1305-x86_64.S
 Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
  2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
- 2016 OpenSSL Project Authors
-License: OpenSSL-or-BSD-or-GPL
+ 2006-2017 CRYPTOGAMS by <appro@openssl.org>
+License: BSD-or-GPL
 
 Files: src/tools/curve25519.c
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
@@ -87,49 +83,9 @@ Files: debian/*
 Copyright: 2016-2018 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 License: GPL-2
 
-License: OpenSSL-or-BSD-or-GPL
- This code is under the OpenSSL License OR the BSD 3-clause license or
- GPL 2.0.  The OpenSSL license is:
- .
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions
- are met:
- .
- 1. Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer. 
- .
- 2. Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in
-    the documentation and/or other materials provided with the
-    distribution.
- .
- 3. All advertising materials mentioning features or use of this
-    software must display the following acknowledgment:
-    "This product includes software developed by the OpenSSL Project
-    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- .
- 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
-    endorse or promote products derived from this software without
-    prior written permission. For written permission, please contact
-    openssl-core@openssl.org.
- .
- 5. Products derived from this software may not be called "OpenSSL"
-    nor may "OpenSSL" appear in their names without prior written
-    permission of the OpenSSL Project.
- .
- 6. Redistributions of any form whatsoever must retain the following
-    acknowledgment:
-    "This product includes software developed by the OpenSSL Project
-    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- .
- ====================================================================
- .
- This product includes cryptographic software written by Eric Young
- (eay@cryptsoft.com).  This product includes software written by Tim
- Hudson (tjh@cryptsoft.com).
- .
- ALTERNATIVELY, the software could be used under a 3-clause BSD
- license:
+License: BSD-or-GPL
+ This code is under the BSD 3-clause license or GPL 2.0.  The
+ 3-clause BSD license is:
  .
  Redistribution and use in source and binary forms, with or without
  modification, are permitted provided that the following conditions
