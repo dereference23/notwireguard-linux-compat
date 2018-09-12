@@ -1,3 +1,10 @@
+wireguard (0.0.20180910-1) unstable; urgency=medium
+
+  * new upstream snapshot release
+  * d/copyright update for new code sources
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 12 Sep 2018 00:28:31 -0400
+
 wireguard (0.0.20180904-2) unstable; urgency=medium
 
   * dkms: use upstream version instead of debian version (closes: #906019)
