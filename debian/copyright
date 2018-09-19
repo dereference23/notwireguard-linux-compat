@@ -16,10 +16,14 @@ Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
  2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>
 License: LGPL-2.1+
 
+Files: src/crypto/*
+Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+License: MIT
+
 Files: src/crypto/zinc/selftest/poly1305.h
 Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
-License: GPL-2
+License: MIT
 
 Files: src/compat/dst_cache/dst_cache.c
 Copyright: 2016 Paolo Abeni <pabeni@redhat.com>
@@ -44,7 +48,7 @@ License: MIT
 Files: src/crypto/zinc/blake2s/blake2s-x86_64.S
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2017 Samuel Neves <sneves@dei.uc.pt>
-License: GPL-2
+License: MIT
 
 Files: src/crypto/zinc/poly1305/poly1305.c
  src/crypto/zinc/chacha20/chacha20-arm.S
@@ -54,14 +58,14 @@ Files: src/crypto/zinc/poly1305/poly1305.c
  src/crypto/zinc/poly1305/poly1305-mips64.S
 Copyright: 2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
-License: BSD-or-GPL
+License: MIT
 
 Files: src/crypto/zinc/chacha20/chacha20-x86_64.S
  src/crypto/zinc/poly1305/poly1305-x86_64.S
 Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
  2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
-License: BSD-or-GPL
+License: MIT
 
 Files: src/tools/curve25519.c
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
@@ -72,54 +76,16 @@ License: BSD-3-clause
 Files: src/crypto/zinc/curve25519/curve25519-fiat32.h
 Copyright: 2015-2016 The fiat-crypto Authors,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: GPL-2
+License: MIT
 
 Files: src/crypto/zinc/curve25519/curve25519-hacl64.h
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: GPL-2
+License: MIT
 
 Files: debian/*
 Copyright: 2016-2018 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 License: GPL-2
-
-License: BSD-or-GPL
- This code is under the BSD 3-clause license or GPL 2.0.  The
- 3-clause BSD license is:
- .
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions
- are met:
- .
- - Redistributions of source code must retain copyright notices,
-   this list of conditions and the following disclaimer.
- .
- - Redistributions in binary form must reproduce the above
-   copyright notice, this list of conditions and the following
-   disclaimer in the documentation and/or other materials
-   provided with the distribution.
- .
- - Neither the name of the Authors nor the names of its
-   copyright holder and contributors may be used to endorse or
-   promote products derived from this software without specific
-   prior written permission.
- .
- ALTERNATIVELY, provided that this notice is retained in full, this
- product may be distributed under the terms of the GNU General Public
- License (GPL) version 2.0, in which case the provisions of the GPL
- apply INSTEAD OF those given above.
- .
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER AND CONTRIBUTORS
- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 License: GPL-2
  This package is free software; you can redistribute it and/or modify
