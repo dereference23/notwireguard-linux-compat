@@ -1,3 +1,10 @@
+wireguard (0.0.20180918-1) unstable; urgency=medium
+
+  * new upstream snapshot release
+  * d/copyright: note zinc change to MIT license
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 19 Sep 2018 15:44:54 -0400
+
 wireguard (0.0.20180910-1) unstable; urgency=medium
 
   * new upstream snapshot release
