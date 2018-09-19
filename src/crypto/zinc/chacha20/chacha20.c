@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  *
@@ -10,20 +10,28 @@
 #include <zinc/chacha20.h>
 
 #include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/init.h>
 #include <crypto/algapi.h>
 
-#ifndef HAVE_CHACHA20_ARCH_IMPLEMENTATION
+#if defined(CONFIG_ZINC_ARCH_X86_64)
+#include "chacha20-x86_64-glue.h"
+#elif defined(CONFIG_ZINC_ARCH_ARM) || defined(CONFIG_ZINC_ARCH_ARM64)
+#include "chacha20-arm-glue.h"
+#elif defined(CONFIG_ZINC_ARCH_MIPS)
+#include "chacha20-mips-glue.h"
+#else
 void __init chacha20_fpu_init(void)
 {
 }
 static inline bool chacha20_arch(u8 *out, const u8 *in, const size_t len,
 				 const u32 key[8], const u32 counter[4],
-				 simd_context_t simd_context)
+				 simd_context_t *simd_context)
 {
 	return false;
 }
 static inline bool hchacha20_arch(u8 *derived_key, const u8 *nonce,
-				  const u8 *key, simd_context_t simd_context)
+				  const u8 *key, simd_context_t *simd_context)
 {
 	return false;
 }
@@ -72,7 +80,7 @@ static inline bool hchacha20_arch(u8 *derived_key, const u8 *nonce,
 
 static void chacha20_block_generic(__le32 *stream, u32 *state)
 {
-	u32 x[CHACHA20_BLOCK_SIZE / sizeof(u32)];
+	u32 x[CHACHA20_BLOCK_WORDS];
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(x); ++i)
@@ -89,7 +97,7 @@ static void chacha20_block_generic(__le32 *stream, u32 *state)
 static void chacha20_generic(u8 *out, const u8 *in, u32 len, const u32 key[8],
 			     const u32 counter[4])
 {
-	__le32 buf[CHACHA20_BLOCK_SIZE / sizeof(__le32)];
+	__le32 buf[CHACHA20_BLOCK_WORDS];
 	u32 x[] = {
 		EXPAND_32_BYTE_K,
 		key[0], key[1], key[2], key[3],
@@ -113,7 +121,7 @@ static void chacha20_generic(u8 *out, const u8 *in, u32 len, const u32 key[8],
 }
 
 void chacha20(struct chacha20_ctx *state, u8 *dst, const u8 *src, u32 len,
-	      simd_context_t simd_context)
+	      simd_context_t *simd_context)
 {
 	if (!chacha20_arch(dst, src, len, state->key, state->counter,
 			   simd_context))
@@ -157,12 +165,41 @@ static void hchacha20_generic(u8 derived_key[CHACHA20_KEY_SIZE],
 /* Derived key should be 32-bit aligned */
 void hchacha20(u8 derived_key[CHACHA20_KEY_SIZE],
 	       const u8 nonce[HCHACHA20_NONCE_SIZE],
-	       const u8 key[HCHACHA20_KEY_SIZE], simd_context_t simd_context)
+	       const u8 key[HCHACHA20_KEY_SIZE], simd_context_t *simd_context)
 {
 	if (!hchacha20_arch(derived_key, nonce, key, simd_context))
 		hchacha20_generic(derived_key, nonce, key);
 }
-/* Deliberately not EXPORT_SYMBOL'd, since there are few reasons why somebody
- * should be using this directly, rather than via xchacha20. Revisit only in
- * the unlikely event that somebody has a good reason to export this.
- */
+EXPORT_SYMBOL(hchacha20);
+
+#include "../selftest/chacha20.h"
+
+static bool nosimd __initdata = false;
+
+#ifndef COMPAT_ZINC_IS_A_MODULE
+int __init chacha20_mod_init(void)
+#else
+static int __init mod_init(void)
+#endif
+{
+	if (!nosimd)
+		chacha20_fpu_init();
+#ifdef DEBUG
+	if (!chacha20_selftest())
+		return -ENOTRECOVERABLE;
+#endif
+	return 0;
+}
+
+#ifdef COMPAT_ZINC_IS_A_MODULE
+static void __exit mod_exit(void)
+{
+}
+
+module_param(nosimd, bool, 0);
+module_init(mod_init);
+module_exit(mod_exit);
+MODULE_LICENSE("GPL v2");
+MODULE_DESCRIPTION("ChaCha20 stream cipher");
+MODULE_AUTHOR("Jason A. Donenfeld <Jason@zx2c4.com>");
+#endif

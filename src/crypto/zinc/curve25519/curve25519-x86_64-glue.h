@@ -1,10 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
-#include <zinc/curve25519.h>
-#include <crypto/algapi.h>
 #include <asm/cpufeature.h>
 #include <asm/processor.h>
 
@@ -13,7 +11,7 @@
 static bool curve25519_use_bmi2 __ro_after_init;
 static bool curve25519_use_adx __ro_after_init;
 
-void __init curve25519_fpu_init(void)
+static void __init curve25519_fpu_init(void)
 {
 	curve25519_use_bmi2 = boot_cpu_has(X86_FEATURE_BMI2);
 	curve25519_use_adx = boot_cpu_has(X86_FEATURE_BMI2) &&
@@ -46,5 +44,3 @@ static inline bool curve25519_base_arch(u8 pub[CURVE25519_POINT_SIZE],
 	}
 	return false;
 }
-
-#define HAVE_CURVE25519_ARCH_IMPLEMENTATION

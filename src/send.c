@@ -121,7 +121,7 @@ void packet_send_handshake_cookie(struct wireguard_device *wg,
 					   sizeof(packet));
 }
 
-static inline void keep_key_fresh(struct wireguard_peer *peer)
+static void keep_key_fresh(struct wireguard_peer *peer)
 {
 	struct noise_keypair *keypair;
 	bool send = false;
@@ -141,7 +141,7 @@ static inline void keep_key_fresh(struct wireguard_peer *peer)
 		packet_send_queued_handshake_initiation(peer, false);
 }
 
-static inline unsigned int skb_padding(struct sk_buff *skb)
+static unsigned int skb_padding(struct sk_buff *skb)
 {
 	/* We do this modulo business with the MTU, just in case the networking
 	 * layer gives us a packet that's bigger than the MTU. In that case, we
@@ -156,12 +156,11 @@ static inline unsigned int skb_padding(struct sk_buff *skb)
 	return padded_size - last_unit;
 }
 
-static inline bool skb_encrypt(struct sk_buff *skb,
-			       struct noise_keypair *keypair,
-			       simd_context_t simd_context)
+static bool skb_encrypt(struct sk_buff *skb, struct noise_keypair *keypair,
+			simd_context_t *simd_context)
 {
 	unsigned int padding_len, plaintext_len, trailer_len;
-	struct scatterlist sg[MAX_SKB_FRAGS * 2 + 1];
+	struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct message_data *header;
 	struct sk_buff *trailer;
 	int num_frags;
@@ -237,7 +236,7 @@ void packet_send_keepalive(struct wireguard_peer *peer)
 #define skb_walk_null_queue_safe(first, skb, next)                             \
 	for (skb = first, next = skb->next; skb;                               \
 	     skb = next, next = skb ? skb->next : NULL)
-static inline void skb_free_null_queue(struct sk_buff *first)
+static void skb_free_null_queue(struct sk_buff *first)
 {
 	struct sk_buff *skb, *next;
 
@@ -297,14 +296,15 @@ void packet_encrypt_worker(struct work_struct *work)
 	struct crypt_queue *queue =
 		container_of(work, struct multicore_worker, work)->ptr;
 	struct sk_buff *first, *skb, *next;
-	simd_context_t simd_context = simd_get();
+	simd_context_t simd_context;
 
+	simd_get(&simd_context);
 	while ((first = ptr_ring_consume_bh(&queue->ring)) != NULL) {
 		enum packet_state state = PACKET_STATE_CRYPTED;
 
 		skb_walk_null_queue_safe (first, skb, next) {
 			if (likely(skb_encrypt(skb, PACKET_CB(first)->keypair,
-					       simd_context)))
+					       &simd_context)))
 				skb_reset(skb);
 			else {
 				state = PACKET_STATE_DEAD;
@@ -314,9 +314,9 @@ void packet_encrypt_worker(struct work_struct *work)
 		queue_enqueue_per_peer(&PACKET_PEER(first)->tx_queue, first,
 				       state);
 
-		simd_context = simd_relax(simd_context);
+		simd_relax(&simd_context);
 	}
-	simd_put(simd_context);
+	simd_put(&simd_context);
 }
 
 static void packet_create_data(struct sk_buff *first)

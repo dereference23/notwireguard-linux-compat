@@ -1,9 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
-#include <zinc/blake2s.h>
 #include <asm/cpufeature.h>
 #include <asm/processor.h>
 #include <asm/fpu/api.h>
@@ -23,7 +22,7 @@ asmlinkage void blake2s_compress_avx512(struct blake2s_state *state,
 static bool blake2s_use_avx __ro_after_init;
 static bool blake2s_use_avx512 __ro_after_init;
 
-void __init blake2s_fpu_init(void)
+static void __init blake2s_fpu_init(void)
 {
 	blake2s_use_avx =
 		boot_cpu_has(X86_FEATURE_AVX) &&
@@ -60,5 +59,3 @@ static inline bool blake2s_arch(struct blake2s_state *state, const u8 *block,
 #endif
 	return false;
 }
-
-#define HAVE_BLAKE2S_ARCH_IMPLEMENTATION

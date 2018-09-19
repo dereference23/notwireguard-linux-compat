@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
@@ -15,6 +15,7 @@ enum {
 	CHACHA20_IV_SIZE = 16,
 	CHACHA20_KEY_SIZE = 32,
 	CHACHA20_BLOCK_SIZE = 64,
+	CHACHA20_BLOCK_WORDS = CHACHA20_BLOCK_SIZE / sizeof(u32),
 	HCHACHA20_KEY_SIZE = 32,
 	HCHACHA20_NONCE_SIZE = 16
 };
@@ -23,8 +24,6 @@ struct chacha20_ctx {
 	u32 key[8];
 	u32 counter[4];
 } __aligned(32);
-
-void chacha20_fpu_init(void);
 
 static inline void chacha20_init(struct chacha20_ctx *state,
 				 const u8 key[CHACHA20_KEY_SIZE],
@@ -43,11 +42,11 @@ static inline void chacha20_init(struct chacha20_ctx *state,
 	state->counter[3] = nonce >> 32;
 }
 void chacha20(struct chacha20_ctx *state, u8 *dst, const u8 *src, u32 len,
-	      simd_context_t simd_context);
+	      simd_context_t *simd_context);
 
 /* Derived key should be 32-bit aligned */
 void hchacha20(u8 derived_key[CHACHA20_KEY_SIZE],
 	       const u8 nonce[HCHACHA20_NONCE_SIZE],
-	       const u8 key[HCHACHA20_KEY_SIZE], simd_context_t simd_context);
+	       const u8 key[HCHACHA20_KEY_SIZE], simd_context_t *simd_context);
 
 #endif /* _ZINC_CHACHA20_H */

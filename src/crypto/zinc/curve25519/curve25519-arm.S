@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  *
@@ -7,7 +7,7 @@
  * but has subsequently been manually reworked for use in kernel space.
  */
 
-#if __LINUX_ARM_ARCH__ == 7
+#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && __LINUX_ARM_ARCH__ == 7
 #include <linux/linkage.h>
 
 .text

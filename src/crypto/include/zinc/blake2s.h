@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
@@ -91,11 +91,5 @@ static inline void blake2s(u8 *out, const u8 *in, const u8 *key,
 
 void blake2s_hmac(u8 *out, const u8 *in, const u8 *key, const size_t outlen,
 		  const size_t inlen, const size_t keylen);
-
-void blake2s_fpu_init(void);
-
-#ifdef DEBUG
-bool blake2s_selftest(void);
-#endif
 
 #endif /* _ZINC_BLAKE2S_H */
