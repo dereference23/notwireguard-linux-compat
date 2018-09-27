@@ -1,3 +1,10 @@
+wireguard (0.0.20180925-1) unstable; urgency=medium
+
+  * new upstream snapshot release
+  * d/copyright: update for licensing tweaks
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 27 Sep 2018 17:02:13 -0400
+
 wireguard (0.0.20180918-1) unstable; urgency=medium
 
   * new upstream snapshot release
