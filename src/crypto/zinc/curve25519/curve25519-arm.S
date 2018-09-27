@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: MIT
- *
+/* SPDX-License-Identifier: GPL-2.0 OR MIT */
+/*
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  *
  * Based on public domain code from Daniel J. Bernstein and Peter Schwabe. This
@@ -7,11 +7,12 @@
  * but has subsequently been manually reworked for use in kernel space.
  */
 
-#if IS_ENABLED(CONFIG_KERNEL_MODE_NEON) && __LINUX_ARM_ARCH__ == 7
+#ifdef CONFIG_KERNEL_MODE_NEON
 #include <linux/linkage.h>
 
 .text
 .fpu neon
+.arch armv7-a
 .align 4
 
 ENTRY(curve25519_neon)
@@ -2091,5 +2092,4 @@ ENTRY(curve25519_neon)
 	mov		sp, ip
 	pop		{r4-r11, pc}
 ENDPROC(curve25519_neon)
-
 #endif

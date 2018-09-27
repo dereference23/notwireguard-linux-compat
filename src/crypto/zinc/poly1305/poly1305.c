@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: MIT
- *
+// SPDX-License-Identifier: GPL-2.0 OR MIT
+/*
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  *
  * Implementation of the Poly1305 message authenticator.
@@ -83,7 +83,7 @@ static inline void poly1305_emit(void *ctx, u8 mac[POLY1305_KEY_SIZE],
 void poly1305_update(struct poly1305_ctx *ctx, const u8 *input, size_t len,
 		     simd_context_t *simd_context)
 {
-	const size_t num = ctx->num % POLY1305_BLOCK_SIZE;
+	const size_t num = ctx->num;
 	size_t rem;
 
 	if (num) {
@@ -118,7 +118,7 @@ EXPORT_SYMBOL(poly1305_update);
 void poly1305_final(struct poly1305_ctx *ctx, u8 mac[POLY1305_MAC_SIZE],
 		    simd_context_t *simd_context)
 {
-	size_t num = ctx->num % POLY1305_BLOCK_SIZE;
+	size_t num = ctx->num;
 
 	if (num) {
 		ctx->data[num++] = 1;
@@ -162,6 +162,6 @@ module_param(nosimd, bool, 0);
 module_init(mod_init);
 module_exit(mod_exit);
 MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("Poly1305 one-time MAC");
+MODULE_DESCRIPTION("Poly1305 one-time authenticator");
 MODULE_AUTHOR("Jason A. Donenfeld <Jason@zx2c4.com>");
 #endif

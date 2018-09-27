@@ -1,5 +1,5 @@
-/* SPDX-License-Identifier: BSD-3-Clause
- *
+/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
+/*
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright (C) 2006-2017 CRYPTOGAMS by <appro@openssl.org>. All Rights Reserved.
  *
@@ -186,6 +186,7 @@ __poly1305_splat:
 
 	ret
 
+#ifdef CONFIG_KERNEL_MODE_NEON
 .align	5
 ENTRY(poly1305_blocks_neon)
 	ldr	x17,[x0,#24]
@@ -820,3 +821,4 @@ ENDPROC(poly1305_emit_neon)
 .align	5
 .Lzeros:
 .long	0,0,0,0,0,0,0,0
+#endif
