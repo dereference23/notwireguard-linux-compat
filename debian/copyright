@@ -18,7 +18,7 @@ License: LGPL-2.1+
 
 Files: src/crypto/*
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: MIT
+License: GPL-2 or MIT
 
 Files: src/crypto/zinc/selftest/poly1305.h
 Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
@@ -48,7 +48,7 @@ License: MIT
 Files: src/crypto/zinc/blake2s/blake2s-x86_64.S
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2017 Samuel Neves <sneves@dei.uc.pt>
-License: MIT
+License: GPL-2 or MIT
 
 Files: src/crypto/zinc/poly1305/poly1305.c
  src/crypto/zinc/chacha20/chacha20-arm.S
@@ -58,30 +58,30 @@ Files: src/crypto/zinc/poly1305/poly1305.c
  src/crypto/zinc/poly1305/poly1305-mips64.S
 Copyright: 2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
-License: MIT
+License: GPL-2 or BSD-3-Clause
 
 Files: src/crypto/zinc/chacha20/chacha20-x86_64.S
  src/crypto/zinc/poly1305/poly1305-x86_64.S
 Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
  2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
-License: MIT
+License: GPL-2 or BSD-3-Clause
 
-Files: src/tools/curve25519.c
-Copyright: 2016-2017 INRIA and Microsoft Corporation,
- 2015-2016 The fiat-crypto Authors,
- 2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: BSD-3-clause
+Files: src/crypto/zinc/curve25519/curve25519-x86_64.h
+Copyright: 2017 Armando Faz <armfazh@ic.unicamp.br>,
+ 2018 Jason A. Donenfeld <Jason@zx2c4.com>,
+ 2018 Samuel Neves <sneves@dei.uc.pt>
+License: GPL-2 or LGPL-2.1
 
 Files: src/crypto/zinc/curve25519/curve25519-fiat32.h
 Copyright: 2015-2016 The fiat-crypto Authors,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: MIT
+License: GPL-2 or MIT
 
 Files: src/crypto/zinc/curve25519/curve25519-hacl64.h
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: MIT
+License: GPL-2 or MIT
 
 Files: debian/*
 Copyright: 2016-2018 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
@@ -109,6 +109,15 @@ License: LGPL-2.1+
  it under the terms of the GNU Lesser General Public License as
  published by the Free Software Foundation; either version 2.1 of the
  License, or (at your option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 2.1 can be found in file
+ "/usr/share/common-licenses/LGPL-2.1".
+
+License: LGPL-2.1
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of version 2.1 of the GNU Lesser General Public
+ License as  published by the Free Software Foundation.
  .
  On Debian systems, the complete text of the GNU Lesser General Public
  License version 2.1 can be found in file
