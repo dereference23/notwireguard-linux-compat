@@ -10,6 +10,7 @@
  */
 
 #include <zinc/curve25519.h>
+#include "../selftest/run.h"
 
 #include <asm/unaligned.h>
 #include <linux/version.h>
@@ -17,14 +18,15 @@
 #include <linux/random.h>
 #include <linux/module.h>
 #include <linux/init.h>
-#include <crypto/algapi.h>
+#include <crypto/algapi.h> // For crypto_memneq.
 
 #if defined(CONFIG_ZINC_ARCH_X86_64)
-#include "curve25519-x86_64-glue.h"
+#include "curve25519-x86_64-glue.c"
 #elif defined(CONFIG_ZINC_ARCH_ARM)
-#include "curve25519-arm-glue.h"
+#include "curve25519-arm-glue.c"
 #else
-void __init curve25519_fpu_init(void)
+static bool *const curve25519_nobs[] __initconst = { };
+static void __init curve25519_fpu_init(void)
 {
 }
 static inline bool curve25519_arch(u8 mypublic[CURVE25519_KEY_SIZE],
@@ -48,9 +50,9 @@ static __always_inline void normalize_secret(u8 secret[CURVE25519_KEY_SIZE])
 }
 
 #if defined(CONFIG_ARCH_SUPPORTS_INT128) && defined(__SIZEOF_INT128__)
-#include "curve25519-hacl64.h"
+#include "curve25519-hacl64.c"
 #else
-#include "curve25519-fiat32.h"
+#include "curve25519-fiat32.c"
 #endif
 
 static const u8 null_point[CURVE25519_KEY_SIZE] = { 0 };
@@ -86,7 +88,7 @@ void curve25519_generate_secret(u8 secret[CURVE25519_KEY_SIZE])
 }
 EXPORT_SYMBOL(curve25519_generate_secret);
 
-#include "../selftest/curve25519.h"
+#include "../selftest/curve25519.c"
 
 static bool nosimd __initdata = false;
 
@@ -98,10 +100,9 @@ static int __init mod_init(void)
 {
 	if (!nosimd)
 		curve25519_fpu_init();
-#ifdef DEBUG
-	if (!curve25519_selftest())
+	if (!selftest_run("curve25519", curve25519_selftest, curve25519_nobs,
+			  ARRAY_SIZE(curve25519_nobs)))
 		return -ENOTRECOVERABLE;
-#endif
 	return 0;
 }
 

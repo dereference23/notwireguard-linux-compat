@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 OR MIT */
+// SPDX-License-Identifier: GPL-2.0 OR MIT
 /*
  * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
@@ -13,24 +13,20 @@ asmlinkage void poly1305_blocks_x86_64(void *ctx, const u8 *inp,
 				       const size_t len, const u32 padbit);
 asmlinkage void poly1305_emit_x86_64(void *ctx, u8 mac[POLY1305_MAC_SIZE],
 				     const u32 nonce[4]);
-#ifdef CONFIG_AS_AVX
 asmlinkage void poly1305_emit_avx(void *ctx, u8 mac[POLY1305_MAC_SIZE],
 				  const u32 nonce[4]);
 asmlinkage void poly1305_blocks_avx(void *ctx, const u8 *inp, const size_t len,
 				    const u32 padbit);
-#endif
-#ifdef CONFIG_AS_AVX2
 asmlinkage void poly1305_blocks_avx2(void *ctx, const u8 *inp, const size_t len,
 				     const u32 padbit);
-#endif
-#ifdef CONFIG_AS_AVX512
 asmlinkage void poly1305_blocks_avx512(void *ctx, const u8 *inp,
 				       const size_t len, const u32 padbit);
-#endif
 
 static bool poly1305_use_avx __ro_after_init;
 static bool poly1305_use_avx2 __ro_after_init;
 static bool poly1305_use_avx512 __ro_after_init;
+static bool *const poly1305_nobs[] __initconst = {
+	&poly1305_use_avx, &poly1305_use_avx2, &poly1305_use_avx512 };
 
 static void __init poly1305_fpu_init(void)
 {
@@ -73,6 +69,15 @@ struct poly1305_arch_internal {
 	struct { u32 r2, r1, r4, r3; } rn[9];
 };
 
+/* The AVX code uses base 2^26, while the scalar code uses base 2^64. If we hit
+ * the unfortunate situation of using AVX and then having to go back to scalar
+ * -- because the user is silly and has called the update function from two
+ * separate contexts -- then we need to convert back to the original base before
+ * proceeding. It is possible to reason that the initial reduction below is
+ * sufficient given the implementation invariants. However, for an avoidance of
+ * doubt and because this is not performance critical, we do the full reduction
+ * anyway.
+ */
 static void convert_to_base2_64(void *ctx)
 {
 	struct poly1305_arch_internal *state = ctx;
@@ -99,40 +104,39 @@ static void convert_to_base2_64(void *ctx)
 }
 
 static inline bool poly1305_blocks_arch(void *ctx, const u8 *inp,
-					const size_t len, const u32 padbit,
+					size_t len, const u32 padbit,
 					simd_context_t *simd_context)
 {
 	struct poly1305_arch_internal *state = ctx;
 
-	if (!poly1305_use_avx ||
+	/* SIMD disables preemption, so relax after processing each page. */
+	BUILD_BUG_ON(PAGE_SIZE < POLY1305_BLOCK_SIZE ||
+		     PAGE_SIZE % POLY1305_BLOCK_SIZE);
+
+	if (!IS_ENABLED(CONFIG_AS_AVX) || !poly1305_use_avx ||
 	    (len < (POLY1305_BLOCK_SIZE * 18) && !state->is_base2_26) ||
-	    !simd_use(simd_context))
-		goto scalar;
-
-#ifdef CONFIG_AS_AVX512
-	if (poly1305_use_avx512) {
-		poly1305_blocks_avx512(ctx, inp, len, padbit);
+	    !simd_use(simd_context)) {
+		convert_to_base2_64(ctx);
+		poly1305_blocks_x86_64(ctx, inp, len, padbit);
 		return true;
 	}
-#endif
 
-#ifdef CONFIG_AS_AVX2
-	if (poly1305_use_avx2) {
-		poly1305_blocks_avx2(ctx, inp, len, padbit);
-		return true;
+	for (;;) {
+		const size_t bytes = min_t(size_t, len, PAGE_SIZE);
+
+		if (IS_ENABLED(CONFIG_AS_AVX512) && poly1305_use_avx512)
+			poly1305_blocks_avx512(ctx, inp, bytes, padbit);
+		else if (IS_ENABLED(CONFIG_AS_AVX2) && poly1305_use_avx2)
+			poly1305_blocks_avx2(ctx, inp, bytes, padbit);
+		else
+			poly1305_blocks_avx(ctx, inp, bytes, padbit);
+		len -= bytes;
+		if (!len)
+			break;
+		inp += bytes;
+		simd_relax(simd_context);
 	}
-#endif
 
-#ifdef CONFIG_AS_AVX
-	if (poly1305_use_avx) {
-		poly1305_blocks_avx(ctx, inp, len, padbit);
-		return true;
-	}
-#endif
-
-scalar:
-	convert_to_base2_64(ctx);
-	poly1305_blocks_x86_64(ctx, inp, len, padbit);
 	return true;
 }
 
@@ -142,18 +146,11 @@ static inline bool poly1305_emit_arch(void *ctx, u8 mac[POLY1305_MAC_SIZE],
 {
 	struct poly1305_arch_internal *state = ctx;
 
-	if (!poly1305_use_avx || !state->is_base2_26 ||!simd_use(simd_context))
-		goto scalar;
-
-#ifdef CONFIG_AS_AVX
-	if (poly1305_use_avx || poly1305_use_avx2 || poly1305_use_avx512) {
+	if (!IS_ENABLED(CONFIG_AS_AVX) || !poly1305_use_avx ||
+	    !state->is_base2_26 || !simd_use(simd_context)) {
+		convert_to_base2_64(ctx);
+		poly1305_emit_x86_64(ctx, mac, nonce);
+	} else
 		poly1305_emit_avx(ctx, mac, nonce);
-		return true;
-	}
-#endif
-
-scalar:
-	convert_to_base2_64(ctx);
-	poly1305_emit_x86_64(ctx, mac, nonce);
 	return true;
 }
