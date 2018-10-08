@@ -20,11 +20,6 @@ Files: src/crypto/*
 Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2 or MIT
 
-Files: src/crypto/zinc/selftest/poly1305.h
-Copyright:  2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
- 2006-2017 CRYPTOGAMS by <appro@openssl.org>
-License: MIT
-
 Files: src/compat/dst_cache/dst_cache.c
 Copyright: 2016 Paolo Abeni <pabeni@redhat.com>
 License: GPL-2+
@@ -67,18 +62,18 @@ Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
 License: GPL-2 or BSD-3-Clause
 
-Files: src/crypto/zinc/curve25519/curve25519-x86_64.h
+Files: src/crypto/zinc/curve25519/curve25519-x86_64.c
 Copyright: 2017 Armando Faz <armfazh@ic.unicamp.br>,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>,
  2018 Samuel Neves <sneves@dei.uc.pt>
 License: GPL-2 or LGPL-2.1
 
-Files: src/crypto/zinc/curve25519/curve25519-fiat32.h
+Files: src/crypto/zinc/curve25519/curve25519-fiat32.c
 Copyright: 2015-2016 The fiat-crypto Authors,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2 or MIT
 
-Files: src/crypto/zinc/curve25519/curve25519-hacl64.h
+Files: src/crypto/zinc/curve25519/curve25519-hacl64.c
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
  2018 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2 or MIT
