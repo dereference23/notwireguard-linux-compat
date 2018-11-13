@@ -1,3 +1,4 @@
 version=4
+opts=mode=git,pgpmode=gittag \
  https://git.zx2c4.com/WireGuard \
- /WireGuard/snapshot/WireGuard-@ANY_VERSION@@ARCHIVE_EXT@
+ refs/tags/([\d\.]+)
