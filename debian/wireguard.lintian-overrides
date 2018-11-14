@@ -1,0 +1,7 @@
+# the wg-quick@ service instances which are stopped and
+# started by the postinst script are (potentially)
+# static units, which are not handled correctly (and
+# not the intended target of) deb-systemd-invoke. using
+# systemctl directly to stop and start these is correct
+# in this case.
+wireguard: maintainer-script-calls-systemctl postinst:*
