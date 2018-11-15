@@ -46,17 +46,17 @@ Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
 License: GPL-2 or MIT
 
 Files: src/crypto/zinc/poly1305/poly1305.c
- src/crypto/zinc/chacha20/chacha20-arm.S
- src/crypto/zinc/chacha20/chacha20-arm64.S
- src/crypto/zinc/poly1305/poly1305-arm.S
- src/crypto/zinc/poly1305/poly1305-arm64.S
- src/crypto/zinc/poly1305/poly1305-mips64.S
+ src/crypto/zinc/chacha20/chacha20-arm.pl
+ src/crypto/zinc/chacha20/chacha20-arm64.pl
+ src/crypto/zinc/poly1305/poly1305-arm.pl
+ src/crypto/zinc/poly1305/poly1305-arm64.pl
+ src/crypto/zinc/poly1305/poly1305-mips64.pl
 Copyright: 2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
 License: GPL-2 or BSD-3-Clause
 
-Files: src/crypto/zinc/chacha20/chacha20-x86_64.S
- src/crypto/zinc/poly1305/poly1305-x86_64.S
+Files: src/crypto/zinc/chacha20/chacha20-x86_64.pl
+ src/crypto/zinc/poly1305/poly1305-x86_64.pl
 Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
  2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
