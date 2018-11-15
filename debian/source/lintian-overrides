@@ -1,5 +1,0 @@
-# upstream uses an OpenPGP key to sign git tags
-# no signed tarballs are available, so unless #871806 is resolved,
-# debian cannot use the signing key in an automated way
-wireguard source: debian-watch-does-not-check-gpg-signature
-wireguard source: debian-watch-could-verify-download debian/upstream/signing-key.asc
