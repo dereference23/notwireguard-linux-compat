@@ -85,7 +85,7 @@ static int prepare_skb_header(struct sk_buff *skb, struct wg_device *wg)
 		return -EINVAL;
 	skb_pull(skb, data_offset);
 	if (unlikely(skb->len != data_len))
-		 /* Final len does not agree with calculated len */
+		/* Final len does not agree with calculated len */
 		return -EINVAL;
 	header_len = validate_header_len(skb);
 	if (unlikely(!header_len))
@@ -179,7 +179,7 @@ static void wg_receive_handshake_packet(struct wg_device *wg,
 				    wg->dev->name, peer->internal_id,
 				    &peer->endpoint.addr);
 		if (wg_noise_handshake_begin_session(&peer->handshake,
-						  &peer->keypairs)) {
+						     &peer->keypairs)) {
 			wg_timers_session_derived(peer);
 			wg_timers_handshake_complete(peer);
 			/* Calling this function will either send any existing
@@ -231,7 +231,7 @@ static void keep_key_fresh(struct wg_peer *peer)
 
 	rcu_read_lock_bh();
 	keypair = rcu_dereference_bh(peer->keypairs.current_keypair);
-	if (likely(keypair && keypair->sending.is_valid) &&
+	if (likely(keypair && READ_ONCE(keypair->sending.is_valid)) &&
 	    keypair->i_am_the_initiator &&
 	    unlikely(wg_birthdate_has_expired(keypair->sending.birthdate,
 			REJECT_AFTER_TIME - KEEPALIVE_TIMEOUT - REKEY_TIMEOUT)))
@@ -255,10 +255,10 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_symmetric_key *key,
 	if (unlikely(!key))
 		return false;
 
-	if (unlikely(!key->is_valid ||
+	if (unlikely(!READ_ONCE(key->is_valid) ||
 		  wg_birthdate_has_expired(key->birthdate, REJECT_AFTER_TIME) ||
 		  key->counter.receive.counter >= REJECT_AFTER_MESSAGES)) {
-		key->is_valid = false;
+		WRITE_ONCE(key->is_valid, false);
 		return false;
 	}
 
@@ -379,7 +379,16 @@ static void wg_packet_consume_data_done(struct wg_peer *peer,
 		goto dishonest_packet_type;
 
 	skb->dev = dev;
+	/* We've already verified the Poly1305 auth tag, which means this packet
+	 * was not modified in transit. We can therefore tell the networking
+	 * stack that all checksums of every layer of encapsulation have already
+	 * been checked "by the hardware" and therefore is unneccessary to check
+	 * again in software.
+	 */
 	skb->ip_summed = CHECKSUM_UNNECESSARY;
+#ifndef COMPAT_CANNOT_USE_CSUM_LEVEL
+	skb->csum_level = ~0; /* All levels */
+#endif
 	skb->protocol = wg_skb_examine_untrusted_ip_hdr(skb);
 	if (skb->protocol == htons(ETH_P_IP)) {
 		len = ntohs(ip_hdr(skb)->tot_len);
@@ -534,7 +543,7 @@ static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
 	if (unlikely(!wg_noise_keypair_get(PACKET_CB(skb)->keypair)))
 		goto err_keypair;
 
-	if (unlikely(peer->is_dead))
+	if (unlikely(READ_ONCE(peer->is_dead)))
 		goto err;
 
 	ret = wg_queue_enqueue_per_device_and_peer(&wg->decrypt_queue,
