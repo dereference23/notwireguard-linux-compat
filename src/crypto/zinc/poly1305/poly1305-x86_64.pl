@@ -65,38 +65,52 @@
 # (***)	strangely enough performance seems to vary from core to core,
 #	listed result is best case;
 
-$flavour = "linux"; # shift;
+$flavour = shift;
 $output  = shift;
 if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
 
 $win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
-$kernel=0; $kernel=1 if ($flavour =~ /linux/);
+$kernel=0; $kernel=1 if (!$flavour && !$output);
 
-$0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-( $xlate="${dir}../perlasm/x86_64-xlate.pl" and -f $xlate) or
-die "can't locate x86_64-xlate.pl";
+if (!$kernel) {
+    $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
+    ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
+    ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
+    die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+    open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
+
+    if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
-}
+	$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25);
+    }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
-	$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
-	$avx += 2 if ($1==2.11 && $2>=8);
-}
+    if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+	`nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
+	$avx = ($1>=2.09) + ($1>=2.10) + ($1>=2.12);
+	$avx += 1 if ($1==2.11 && $2>=8);
+    }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	   `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=12);
-}
+    if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+	`ml64 2>&1` =~ /Version ([0-9]+)\./) {
+	$avx = ($1>=10) + ($1>=11);
+    }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:^clang|LLVM) version|.*based on LLVM) ([3-9]\.[0-9]+)/) {
+    if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:^clang|LLVM) version|.*based on LLVM) ([3-9]\.[0-9]+)/) {
 	$avx = ($2>=3.0) + ($2>3.0);
+    }
+} else {
+    $avx = 4; # The kernel uses ifdefs for this.
+    $pid = open OUT,"|-";
+    if (!$pid) {
+	while (<STDIN>) {
+	    s/(^\.type.*),[0-9]+$/\1/;
+	    s/(^\.type.*),\@abi-omnipotent+$/\1,\@function/;
+	    /^\.cfi.*/ or print;
+	}
+	exit;
+    }
 }
-
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 sub declare_function() {
@@ -128,7 +142,7 @@ ___
 
 if ($avx) {
 $code.=<<___ if $kernel;
-.section .rodata # .cst192.Lconst, "aM", @progbits, 192
+.section .rodata
 ___
 $code.=<<___;
 .align	64
@@ -231,12 +245,12 @@ ___
 $code.=<<___ if (!$kernel);
 .extern	OPENSSL_ia32cap_P
 
-.globl	poly1305_init
-.hidden	poly1305_init
-.globl	poly1305_blocks
-.hidden	poly1305_blocks
-.globl	poly1305_emit
-.hidden	poly1305_emit
+.globl	poly1305_init_x86_64
+.hidden	poly1305_init_x86_64
+.globl	poly1305_blocks_x86_64
+.hidden	poly1305_blocks_x86_64
+.globl	poly1305_emit_x86_64
+.hidden	poly1305_emit_x86_64
 ___
 &declare_function("poly1305_init_x86_64", 32, 3);
 $code.=<<___;
@@ -249,8 +263,8 @@ $code.=<<___;
 	je	.Lno_key
 ___
 $code.=<<___ if (!$kernel);
-	lea	poly1305_blocks(%rip),%r10
-	lea	poly1305_emit(%rip),%r11
+	lea	poly1305_blocks_x86_64(%rip),%r10
+	lea	poly1305_emit_x86_64(%rip),%r11
 ___
 $code.=<<___	if (!$kernel && $avx);
 	mov	OPENSSL_ia32cap_P+4(%rip),%r9
@@ -433,6 +447,8 @@ $code.=<<___;
 .type	__poly1305_init_avx,\@abi-omnipotent
 .align	32
 __poly1305_init_avx:
+	push %rbp
+	mov %rsp,%rbp
 	mov	$r0,$h0
 	mov	$r1,$h1
 	xor	$h2,$h2
@@ -589,6 +605,7 @@ __poly1305_init_avx:
 	mov	$d1#d,`16*8+8-64`($ctx)
 
 	lea	-48-64($ctx),$ctx	# size [de-]optimization
+	pop %rbp
 	ret
 .size	__poly1305_init_avx,.-__poly1305_init_avx
 ___
@@ -614,6 +631,9 @@ $code.=<<___;
 	test	\$31,$len
 	jz	.Leven_avx
 
+	push	%rbp
+.cfi_push	%rbp
+	mov 	%rsp,%rbp
 	push	%rbx
 .cfi_push	%rbx
 	push	%r12
@@ -725,18 +745,18 @@ $code.=<<___;
 	mov	$h2#d,16($ctx)
 .align	16
 .Ldone_avx:
-	mov	0(%rsp),%r15
+	pop 		%r15
 .cfi_restore	%r15
-	mov	8(%rsp),%r14
+	pop 		%r14
 .cfi_restore	%r14
-	mov	16(%rsp),%r13
+	pop 		%r13
 .cfi_restore	%r13
-	mov	24(%rsp),%r12
+	pop 		%r12
 .cfi_restore	%r12
-	mov	32(%rsp),%rbx
+	pop 		%rbx
 .cfi_restore	%rbx
-	lea	40(%rsp),%rsp
-.cfi_adjust_cfa_offset	-40
+	pop 		%rbp
+.cfi_restore	%rbp
 .Lno_data_avx:
 .Lblocks_avx_epilogue:
 	ret
@@ -745,6 +765,9 @@ $code.=<<___;
 .align	32
 .Lbase2_64_avx:
 .cfi_startproc
+	push	%rbp
+.cfi_push	%rbp
+	mov 	%rsp,%rbp
 	push	%rbx
 .cfi_push	%rbx
 	push	%r12
@@ -812,20 +835,18 @@ $code.=<<___;
 
 .Lproceed_avx:
 	mov	%r15,$len
-
-	mov	0(%rsp),%r15
+	pop 		%r15
 .cfi_restore	%r15
-	mov	8(%rsp),%r14
+	pop 		%r14
 .cfi_restore	%r14
-	mov	16(%rsp),%r13
+	pop 		%r13
 .cfi_restore	%r13
-	mov	24(%rsp),%r12
+	pop 		%r12
 .cfi_restore	%r12
-	mov	32(%rsp),%rbx
+	pop 		%rbx
 .cfi_restore	%rbx
-	lea	40(%rsp),%rax
-	lea	40(%rsp),%rsp
-.cfi_adjust_cfa_offset	-40
+	pop 		%rbp
+.cfi_restore	%rbp
 .Lbase2_64_avx_epilogue:
 	jmp	.Ldo_avx
 .cfi_endproc
@@ -1541,6 +1562,9 @@ $code.=<<___;
 	test	\$63,$len
 	jz	.Leven_avx2$suffix
 
+	push	%rbp
+.cfi_push	%rbp
+	mov 	%rsp,%rbp
 	push	%rbx
 .cfi_push	%rbx
 	push	%r12
@@ -1658,18 +1682,18 @@ $code.=<<___;
 	mov	$h2#d,16($ctx)
 .align	16
 .Ldone_avx2$suffix:
-	mov	0(%rsp),%r15
+	pop 		%r15
 .cfi_restore	%r15
-	mov	8(%rsp),%r14
+	pop 		%r14
 .cfi_restore	%r14
-	mov	16(%rsp),%r13
+	pop 		%r13
 .cfi_restore	%r13
-	mov	24(%rsp),%r12
+	pop 		%r12
 .cfi_restore	%r12
-	mov	32(%rsp),%rbx
+	pop 		%rbx
 .cfi_restore	%rbx
-	lea	40(%rsp),%rsp
-.cfi_adjust_cfa_offset	-40
+	pop 		%rbp
+.cfi_restore 	%rbp
 .Lno_data_avx2$suffix:
 .Lblocks_avx2_epilogue$suffix:
 	ret
@@ -1678,6 +1702,9 @@ $code.=<<___;
 .align	32
 .Lbase2_64_avx2$suffix:
 .cfi_startproc
+	push	%rbp
+.cfi_push	%rbp
+	mov 	%rsp,%rbp
 	push	%rbx
 .cfi_push	%rbx
 	push	%r12
@@ -1756,19 +1783,18 @@ $code.=<<___ if (!$kernel);
 	mov	\$`(1<<31|1<<30|1<<16)`,%r11d
 ___
 $code.=<<___;
-	mov	0(%rsp),%r15
+	pop 		%r15
 .cfi_restore	%r15
-	mov	8(%rsp),%r14
+	pop 		%r14
 .cfi_restore	%r14
-	mov	16(%rsp),%r13
+	pop 		%r13
 .cfi_restore	%r13
-	mov	24(%rsp),%r12
+	pop 		%r12
 .cfi_restore	%r12
-	mov	32(%rsp),%rbx
+	pop 		%rbx
 .cfi_restore	%rbx
-	lea	40(%rsp),%rax
-	lea	40(%rsp),%rsp
-.cfi_adjust_cfa_offset	-40
+	pop 		%rbp
+.cfi_restore 	%rbp
 .Lbase2_64_avx2_epilogue$suffix:
 	jmp	.Ldo_avx2$suffix
 .cfi_endproc
@@ -2187,6 +2213,7 @@ $code.=<<___	if ($win64);
 	vmovdqa		-0x40(%r10),%xmm13
 	vmovdqa		-0x30(%r10),%xmm14
 	vmovdqa		-0x20(%r10),%xmm15
+	lea		-8(%r10),%rsp
 .Ldo_avx2_epilogue$suffix:
 ___
 $code.=<<___	if (!$win64);
@@ -2778,6 +2805,7 @@ $code.=<<___	if ($win64);
 	movdqa		-0x40(%r10),%xmm13
 	movdqa		-0x30(%r10),%xmm14
 	movdqa		-0x20(%r10),%xmm15
+	lea		-8(%r10),%rsp
 .Ldo_avx512_epilogue:
 ___
 $code.=<<___	if (!$win64);
@@ -3864,6 +3892,7 @@ ___
 }	}	}
 }
 
+if (!$kernel)
 {	# chacha20-poly1305 helpers
 my ($out,$inp,$otp,$len)=$win64 ? ("%rcx","%rdx","%r8", "%r9") :  # Win64 order
                                   ("%rdi","%rsi","%rdx","%rcx");  # Unix order
@@ -4110,17 +4139,17 @@ avx_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_poly1305_init
-	.rva	.LSEH_end_poly1305_init
-	.rva	.LSEH_info_poly1305_init
+	.rva	.LSEH_begin_poly1305_init_x86_64
+	.rva	.LSEH_end_poly1305_init_x86_64
+	.rva	.LSEH_info_poly1305_init_x86_64
 
-	.rva	.LSEH_begin_poly1305_blocks
-	.rva	.LSEH_end_poly1305_blocks
-	.rva	.LSEH_info_poly1305_blocks
+	.rva	.LSEH_begin_poly1305_blocks_x86_64
+	.rva	.LSEH_end_poly1305_blocks_x86_64
+	.rva	.LSEH_info_poly1305_blocks_x86_64
 
-	.rva	.LSEH_begin_poly1305_emit
-	.rva	.LSEH_end_poly1305_emit
-	.rva	.LSEH_info_poly1305_emit
+	.rva	.LSEH_begin_poly1305_emit_x86_64
+	.rva	.LSEH_end_poly1305_emit_x86_64
+	.rva	.LSEH_info_poly1305_emit_x86_64
 ___
 $code.=<<___ if ($avx);
 	.rva	.LSEH_begin_poly1305_blocks_avx
@@ -4160,20 +4189,20 @@ ___
 $code.=<<___;
 .section	.xdata
 .align	8
-.LSEH_info_poly1305_init:
+.LSEH_info_poly1305_init_x86_64:
 	.byte	9,0,0,0
 	.rva	se_handler
-	.rva	.LSEH_begin_poly1305_init,.LSEH_begin_poly1305_init
+	.rva	.LSEH_begin_poly1305_init_x86_64,.LSEH_begin_poly1305_init_x86_64
 
-.LSEH_info_poly1305_blocks:
+.LSEH_info_poly1305_blocks_x86_64:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lblocks_body,.Lblocks_epilogue
 
-.LSEH_info_poly1305_emit:
+.LSEH_info_poly1305_emit_x86_64:
 	.byte	9,0,0,0
 	.rva	se_handler
-	.rva	.LSEH_begin_poly1305_emit,.LSEH_begin_poly1305_emit
+	.rva	.LSEH_begin_poly1305_emit_x86_64,.LSEH_begin_poly1305_emit_x86_64
 ___
 $code.=<<___ if ($avx);
 .LSEH_info_poly1305_blocks_avx_1:
