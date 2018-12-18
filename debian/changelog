@@ -1,3 +1,9 @@
+wireguard (0.0.20181218-1) unstable; urgency=medium
+
+  * New upstream snapshot release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 18 Dec 2018 13:50:07 -0500
+
 wireguard (0.0.20181119-1) unstable; urgency=medium
 
   * New upstream snapshot release
