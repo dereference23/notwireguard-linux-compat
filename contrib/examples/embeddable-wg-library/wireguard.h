@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: LGPL-2.1+ */
 /*
- * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
 #ifndef WIREGUARD_H
@@ -15,6 +15,12 @@
 
 typedef uint8_t wg_key[32];
 typedef char wg_key_b64_string[((sizeof(wg_key) + 2) / 3) * 4 + 1];
+
+/* Cross platform __kernel_timespec */
+struct timespec64 {
+	int64_t tv_sec;
+	int64_t tv_nsec;
+};
 
 typedef struct wg_allowedip {
 	uint16_t family;
@@ -46,7 +52,7 @@ typedef struct wg_peer {
 		struct sockaddr_in6 addr6;
 	} endpoint;
 
-	struct timespec last_handshake_time;
+	struct timespec64 last_handshake_time;
 	uint64_t rx_bytes, tx_bytes;
 	uint16_t persistent_keepalive_interval;
 

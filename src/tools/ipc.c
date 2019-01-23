@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
 #ifdef __linux__
@@ -420,9 +420,9 @@ static int userspace_get_device(struct wgdevice **out, const char *interface)
 			if (*end || allowedip->family == AF_UNSPEC || (allowedip->family == AF_INET6 && allowedip->cidr > 128) || (allowedip->family == AF_INET && allowedip->cidr > 32))
 				break;
 		} else if (peer && !strcmp(key, "last_handshake_time_sec"))
-			peer->last_handshake_time.tv_sec = NUM(0xffffffffffffffffULL);
+			peer->last_handshake_time.tv_sec = NUM(0x7fffffffffffffffULL);
 		else if (peer && !strcmp(key, "last_handshake_time_nsec"))
-			peer->last_handshake_time.tv_nsec = NUM(0xffffffffffffffffULL);
+			peer->last_handshake_time.tv_nsec = NUM(0x7fffffffffffffffULL);
 		else if (peer && !strcmp(key, "rx_bytes"))
 			peer->rx_bytes = NUM(0xffffffffffffffffULL);
 		else if (peer && !strcmp(key, "tx_bytes"))

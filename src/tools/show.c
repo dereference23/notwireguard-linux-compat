@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
 #include <arpa/inet.h>
@@ -155,7 +155,7 @@ static size_t pretty_time(char *buf, const size_t len, unsigned long long left)
 	return offset;
 }
 
-static char *ago(const struct timespec *t)
+static char *ago(const struct timespec64 *t)
 {
 	static char buf[1024];
 	size_t offset;

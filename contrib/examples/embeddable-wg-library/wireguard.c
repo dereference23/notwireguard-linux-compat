@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-2.1+
 /*
- * Copyright (C) 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
+ * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright (C) 2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>.
  */
 
@@ -1688,7 +1688,7 @@ static void invert(fe o, const fe i)
 	memzero_explicit(c, sizeof(c));
 }
 
-static void normalize_key(uint8_t *z)
+static void clamp_key(uint8_t *z)
 {
 	z[31] = (z[31] & 127) | 64;
 	z[0] &= 248;
@@ -1701,7 +1701,7 @@ void wg_generate_public_key(wg_key public_key, const wg_key private_key)
 	fe a = { 1 }, b = { 9 }, c = { 0 }, d = { 1 }, e, f;
 
 	memcpy(z, private_key, sizeof(z));
-	normalize_key(z);
+	clamp_key(z);
 
 	for (i = 254; i >= 0; --i) {
 		r = (z[i >> 3] >> (i & 7)) & 1;
@@ -1745,7 +1745,7 @@ void wg_generate_public_key(wg_key public_key, const wg_key private_key)
 void wg_generate_private_key(wg_key private_key)
 {
 	wg_generate_preshared_key(private_key);
-	normalize_key(private_key);
+	clamp_key(private_key);
 }
 
 void wg_generate_preshared_key(wg_key preshared_key)
