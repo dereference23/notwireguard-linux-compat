@@ -9,7 +9,7 @@ during the debian build, we'll use the upstream version.
  1 file changed, 4 insertions(+), 9 deletions(-)
 
 diff --git a/src/Makefile b/src/Makefile
-index 8543b99..f7a5177 100644
+index c254926..08f5866 100644
 --- a/src/Makefile
 +++ b/src/Makefile
 @@ -18,19 +18,14 @@ MAKEFLAGS += --no-print-directory

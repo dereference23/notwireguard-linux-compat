@@ -21,7 +21,7 @@ can remove this patch.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/tools/genkey.c b/src/tools/genkey.c
-index d2d4c53..a884a3f 100644
+index 645f614..6855f13 100644
 --- a/src/tools/genkey.c
 +++ b/src/tools/genkey.c
 @@ -32,7 +32,7 @@ static inline ssize_t get_random_bytes(uint8_t *out, size_t len)
