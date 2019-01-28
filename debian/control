@@ -17,8 +17,8 @@ Rules-Requires-Root: no
 Package: wireguard
 Architecture: all
 Depends:
- wireguard-dkms (= ${source:Version}) | wireguard-modules (>= 0.0.20171001),
- wireguard-tools (>= 0.0.20171001),
+ wireguard-dkms (= ${source:Version}) | wireguard-modules (= ${source:Version}),
+ wireguard-tools (>= ${source:Version}),
  ${misc:Depends},
 Description: fast, modern, secure kernel VPN tunnel (metapackage)
  WireGuard is a novel VPN that runs inside the Linux Kernel and uses
@@ -30,7 +30,8 @@ Description: fast, modern, secure kernel VPN tunnel (metapackage)
  many different circumstances. It runs over UDP.
  .
  This metapackage explicitly depends on both the kernel module and the
- userspace tooling.
+ userspace tooling, and tries to load the new kernel module upon
+ installation, if wireguard is already in use on the system.
 
 Package: wireguard-dkms
 Architecture: all
