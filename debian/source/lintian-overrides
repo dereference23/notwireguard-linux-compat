@@ -1,0 +1,4 @@
+# This versioning is intentional, as the "wireguard-modules" package
+# can be created via "dkms mkbmdeb wireguard/$version", and it will
+# have a version number that matches the source version
+wireguard source: version-substvar-for-external-package wireguard -> wireguard-modules
