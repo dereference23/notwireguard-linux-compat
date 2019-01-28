@@ -1,3 +1,19 @@
+wireguard (0.0.20190123-1) unstable; urgency=medium
+
+  [ Fabian Grünbichler ]
+  * wireguard.postinst: Add module reload on upgrade (Closes: #913446)
+
+  [ Daniel Kahn Gillmor ]
+  * New upstream version (Closes: #919232)
+  * Tighten dependencies and description of wireguard metapackage
+  * Fine-tune module reload code on wireguard.postinst
+  * Standards-Version: bump to 4.3.0 (no changes needed)
+  * Update debian/copyright
+  * override lintian warning version-substvar-for-external-package
+  * move to debhelper-compat 12
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 28 Jan 2019 14:31:53 -0500
+
 wireguard (0.0.20181218-1) unstable; urgency=medium
 
   * New upstream snapshot release
