@@ -4,29 +4,25 @@ Source: https://www.wireguard.com/
 Upstream-Contact: WireGuard mailing list <wireguard@lists.zx2c4.com>
 
 Files: *
-Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
 
 Files: contrib/examples/embeddable-wg-library/*
-Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
 License: LGPL-2.1+
 
 Files: contrib/examples/embeddable-wg-library/wireguard.c
-Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
  2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>
 License: LGPL-2.1+
 
 Files: src/crypto/*
-Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>
+Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2 or MIT
 
 Files: src/compat/dst_cache/dst_cache.c
 Copyright: 2016 Paolo Abeni <pabeni@redhat.com>
 License: GPL-2+
-
-Files: contrib/examples/keygen-html/src/curve25519_generate.c
-Copyright: 2018 Jason A. Donenfeld <Jason@zx2c4.com>
-License: GPL-2
 
 Files: src/compat/memneq/memneq.c
 Copyright: 2013 OpenVPN Technologies, Inc
@@ -41,7 +37,7 @@ Copyright: 2018 Piotr Lizonczyk <plizonczyk.public@gmail.com>
 License: MIT
 
 Files: src/crypto/zinc/blake2s/blake2s-x86_64.S
-Copyright: 2015-2018 Jason A. Donenfeld <Jason@zx2c4.com>,
+Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>,
  2017 Samuel Neves <sneves@dei.uc.pt>
 License: GPL-2 or MIT
 
@@ -51,35 +47,35 @@ Files: src/crypto/zinc/poly1305/poly1305.c
  src/crypto/zinc/poly1305/poly1305-arm.pl
  src/crypto/zinc/poly1305/poly1305-arm64.pl
  src/crypto/zinc/poly1305/poly1305-mips64.pl
-Copyright: 2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
+Copyright: 2015-2019 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
 License: GPL-2 or BSD-3-Clause
 
 Files: src/crypto/zinc/chacha20/chacha20-x86_64.pl
  src/crypto/zinc/poly1305/poly1305-x86_64.pl
 Copyright: 2017 Samuel Neves <sneves@dei.uc.pt>,
- 2015-2018 Jason A Donenfeld <Jason@zx2c4.com>,
+ 2015-2019 Jason A Donenfeld <Jason@zx2c4.com>,
  2006-2017 CRYPTOGAMS by <appro@openssl.org>
 License: GPL-2 or BSD-3-Clause
 
 Files: src/crypto/zinc/curve25519/curve25519-x86_64.c
 Copyright: 2017 Armando Faz <armfazh@ic.unicamp.br>,
- 2018 Jason A. Donenfeld <Jason@zx2c4.com>,
+ 2018-2019 Jason A. Donenfeld <Jason@zx2c4.com>,
  2018 Samuel Neves <sneves@dei.uc.pt>
 License: GPL-2 or LGPL-2.1
 
 Files: src/crypto/zinc/curve25519/curve25519-fiat32.c
 Copyright: 2015-2016 The fiat-crypto Authors,
- 2018 Jason A. Donenfeld <Jason@zx2c4.com>
+ 2018-2019 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2 or MIT
 
 Files: src/crypto/zinc/curve25519/curve25519-hacl64.c
 Copyright: 2016-2017 INRIA and Microsoft Corporation,
- 2018 Jason A. Donenfeld <Jason@zx2c4.com>
+ 2018-2019 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2 or MIT
 
 Files: debian/*
-Copyright: 2016-2018 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Copyright: 2016-2019 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 License: GPL-2
 
 License: GPL-2
