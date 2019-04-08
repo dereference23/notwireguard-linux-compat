@@ -21,15 +21,15 @@ can remove this patch.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/tools/genkey.c b/src/tools/genkey.c
-index 645f614..6855f13 100644
+index 21d2f7a..cd1f059 100644
 --- a/src/tools/genkey.c
 +++ b/src/tools/genkey.c
-@@ -32,7 +32,7 @@ static inline ssize_t get_random_bytes(uint8_t *out, size_t len)
- 	ssize_t ret;
- 	int fd;
+@@ -39,7 +39,7 @@ static inline bool __attribute__((__warn_unused_result__)) get_random_bytes(uint
+ 		return false;
+ 	}
  
 -#if defined(__OpenBSD__) || (defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12) || (defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25)))
 +#if defined(__OpenBSD__) || (defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_12)
- 	ret = getentropy(out, len);
- 	if (!ret)
- 		return len;
+ 	if (!getentropy(out, len))
+ 		return true;
+ #endif
