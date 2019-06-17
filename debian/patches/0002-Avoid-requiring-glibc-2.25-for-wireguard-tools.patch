@@ -21,10 +21,10 @@ can remove this patch.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/tools/genkey.c b/src/tools/genkey.c
-index 21d2f7a..cd1f059 100644
+index b9c2a86..44d4cdb 100644
 --- a/src/tools/genkey.c
 +++ b/src/tools/genkey.c
-@@ -39,7 +39,7 @@ static inline bool __attribute__((__warn_unused_result__)) get_random_bytes(uint
+@@ -40,7 +40,7 @@ static inline bool __attribute__((__warn_unused_result__)) get_random_bytes(uint
  		return false;
  	}
  
