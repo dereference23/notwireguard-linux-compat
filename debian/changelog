@@ -1,3 +1,12 @@
+wireguard (0.0.20190702-2) unstable; urgency=medium
+
+  * Work around faulty siphash backport (Closes: #934763)
+  * standards-version: bump to 4.4.0 (no changes needed)
+  * override package-supports-alternative-init-but-no-init.d-script for
+    wireguard-tools
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 19 Aug 2019 18:07:59 -0400
+
 wireguard (0.0.20190702-1) unstable; urgency=medium
 
   * new upstream version
