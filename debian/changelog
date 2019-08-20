@@ -1,3 +1,9 @@
+wireguard (0.0.20190702-3) unstable; urgency=medium
+
+  * clean up wireguard-modules versioned dependency (Closes: #930432)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 19 Aug 2019 20:52:22 -0400
+
 wireguard (0.0.20190702-2) unstable; urgency=medium
 
   * Work around faulty siphash backport (Closes: #934763)
