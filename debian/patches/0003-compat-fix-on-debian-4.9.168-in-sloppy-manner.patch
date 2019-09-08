@@ -12,11 +12,11 @@ a stop-gap solution for the Debian package.
  1 file changed, 6 insertions(+)
 
 diff --git a/src/compat/compat.h b/src/compat/compat.h
-index 239fa58..7fc3145 100644
+index a608fb3..bf34fb0 100644
 --- a/src/compat/compat.h
 +++ b/src/compat/compat.h
-@@ -844,6 +844,12 @@ static inline void skb_mark_not_on_list(struct sk_buff *skb)
- #define cpu_have_named_feature(name) (elf_hwcap & (HWCAP_ ## name))
+@@ -857,6 +857,12 @@ static inline void skb_mark_not_on_list(struct sk_buff *skb)
+ #endif
  #endif
  
 +#if LINUX_VERSION_CODE == KERNEL_VERSION(4, 9, 168)
