@@ -38,6 +38,7 @@ Architecture: all
 Section: kernel
 Depends:
  ${misc:Depends},
+ ${perl:Depends},
 Recommends:
  wireguard-tools (= ${source:Version}),
 Description: fast, modern, secure kernel VPN tunnel (DKMS version)
