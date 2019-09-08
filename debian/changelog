@@ -1,3 +1,11 @@
+wireguard (0.0.20190905-1) unstable; urgency=medium
+
+  * new upstream release
+  * refresh patches
+  * include ${perl:Depends} in wireguard-dkms
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 08 Sep 2019 15:42:09 -0400
+
 wireguard (0.0.20190702-3) unstable; urgency=medium
 
   * clean up wireguard-modules versioned dependency (Closes: #930432)
