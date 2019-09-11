@@ -5,7 +5,7 @@ include /usr/share/dpkg/default.mk
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export DEB_VERSION_UPSTREAM
 
-WIREGUARD_ARGS = WITH_BASHCOMPLETION=yes WITH_WGQUICK=yes WITH_SYSTEMDUNITS=yes
+WIREGUARD_ARGS = WITH_BASHCOMPLETION=yes WITH_WGQUICK=yes WITH_SYSTEMDUNITS=yes V=1
 
 %:
 	dh $@ --with dkms
