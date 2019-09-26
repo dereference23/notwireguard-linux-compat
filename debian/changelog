@@ -1,3 +1,10 @@
+wireguard (0.0.20190913-1) unstable; urgency=medium
+
+  * new upstream release
+  * verbose build to satisfy compiler-flags-hidden complaint from bls
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 26 Sep 2019 10:29:32 +0200
+
 wireguard (0.0.20190905-1) unstable; urgency=medium
 
   * new upstream release
