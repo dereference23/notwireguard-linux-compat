@@ -1,3 +1,12 @@
+wireguard (0.0.20191012-1) unstable; urgency=medium
+
+  * new upstream release
+  * d/clean: clean up generated assembler
+  * more notes about autopkgtest
+  * standards-version: bump to 4.4.1 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 15 Oct 2019 17:41:38 +0200
+
 wireguard (0.0.20190913-1) unstable; urgency=medium
 
   * new upstream release
