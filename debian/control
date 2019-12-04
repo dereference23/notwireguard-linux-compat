@@ -59,6 +59,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
+ iptables,
  wireguard-dkms (= ${source:Version}) | wireguard-modules (>= 0.0.20171001),
 Description: fast, modern, secure kernel VPN tunnel (userland utilities)
  WireGuard is a novel VPN that runs inside the Linux Kernel and uses
