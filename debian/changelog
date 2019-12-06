@@ -1,3 +1,9 @@
+wireguard (0.0.20191206-1) unstable; urgency=medium
+
+  * new upstream release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 06 Dec 2019 17:32:38 -0500
+
 wireguard (0.0.20191127-2) unstable; urgency=medium
 
   * wireguard-tools now Recommends: iptables because of wg-quick
