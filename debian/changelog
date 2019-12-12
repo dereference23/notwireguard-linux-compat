@@ -1,3 +1,10 @@
+wireguard (0.0.20191212-1) unstable; urgency=medium
+
+  * new upstream release
+  * encourage nftables instead of iptables
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 12 Dec 2019 10:53:37 -0500
+
 wireguard (0.0.20191206-1) unstable; urgency=medium
 
   * new upstream release
