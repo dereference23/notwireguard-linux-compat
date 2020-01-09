@@ -1,4 +1,4 @@
-wireguard-linux-compat (0.0.20191219-2) unstable; urgency=medium
+wireguard-linux-compat (0.0.20191226-1) unstable; urgency=medium
 
   * new upstream source package (Closes: #948503)
 
