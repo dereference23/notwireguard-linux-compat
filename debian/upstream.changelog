@@ -1,3 +1,653 @@
+2019-12-19 (tag: 0.0.20191219) version: bump snapshot
+2019-12-19 compat: ipv6_dst_lookup_flow was backported to 5.3 and 5.4
+2019-12-17 wg-quick: linux: use already configured addresses instead of in-memory
+2019-12-13 tools: adjust wg.8 syntax for consistency in COMMANDS section
+2019-12-12 wg-quick: linux: try both iptables(8) and nft(8) on teardown
+2019-12-12 (tag: 0.0.20191212) version: bump snapshot
+2019-12-12 main: remove unused include <linux/version.h>
+2019-12-10 wg-quick: linux: support older nft(8)
+2019-12-10 global: fix up spelling
+2019-12-10 wg-quick: linux: add support for nft and prefer it
+2019-12-09 compat: support building for RHEL-8.1 instead of RHEL-8.0
+2019-12-08 socket: convert to ipv6_dst_lookup_flow for 5.5
+2019-12-06 (tag: 0.0.20191206) version: bump snapshot
+2019-12-06 chacha20poly1305: double check the sgmiter logic with test
+2019-12-06 wg-quick: linux: ignore save warnings for iptables-nft
+2019-12-06 wg-quick: linux: suppress more warnings on weird kernels
+2019-12-05 wg-quick: linux: some iptables don't like empty lines
+2019-12-05 crypto: use new assembler macros for 5.5
+2019-12-05 chacha20poly1305: port to sgmitter for 5.5
+2019-11-27 netlink: prepare for removal of genl_family_attrbuf in 5.5
+2019-12-05 (tag: 0.0.20191205) version: bump snapshot
+2019-12-05 wg-quick: linux: iptables-* -w is not widely supported
+2019-12-02 ipc: make sure userspace communication frees wgdevice
+2019-11-29 send: avoid touching skb->{next,prev} directly
+2019-11-29 device: prepare skb_list_walk_safe for upstreaming
+2019-11-29 send: use kfree_skb_list
+2019-11-28 wg-quick: linux: have remove_iptables return true
+2019-11-28 wg-quick: linux: ensure postdown hooks execute
+2019-11-27 wg-quick: linux: suppress error when finding unused table
+2019-11-27 (tag: 0.0.20191127) version: bump snapshot
+2019-06-11 tools: add syncconf command
+2019-11-27 reresolve-dns: remove invalid anchors on regex match
+2019-11-27 qemu: bump version
+2019-11-27 qemu: respect PATH when finding CBUILD
+2019-11-27 qemu: work around build bug with powerpc64le
+2019-11-21 wg-quick: linux: filter bogus injected packets and don't disable rpfilter
+2019-11-21 wg-quick: linux: only touch net.ipv4 for v4
+2019-11-25 allowedips: avoid double lock in selftest error case
+2019-11-25 socket: remove redundant check of new4
+2019-11-22 allowedips: safely dereference rcu roots
+2019-10-30 messages: recalculate rekey max based on a one minute flood
+2019-10-16 wg-quick: android: check for null in binder cleanup functions
+2019-10-12 (tag: 0.0.20191012) version: bump snapshot
+2019-10-02 wg-quick: android: use Binder for setting DNS on Android 10
+2019-10-11 noise: recompare stamps after taking write lock
+2019-09-28 netlink: allow preventing creation of new peers when updating
+2019-09-24 netns: add test for failing 5.3 FIB changes
+2019-09-24 qemu: bump default version
+2019-09-13 (tag: 0.0.20190913) version: bump snapshot
+2019-09-13 compat: support rhel/centos 7.7
+2019-09-13 Kbuild: squelch warnings for stack limit on broken kernel configs
+2019-09-13 compat: don't rewrite siphash when it's from compat
+2019-09-11 compat: support newer PaX
+2019-09-05 (tag: 0.0.20190905) version: bump snapshot
+2019-09-05 compat: work around ubuntu breakage
+2019-08-30 tools: windows: enforce named pipe ownership and use protected prefix
+2019-08-28 Makefile: allow specifying kernel release
+2019-08-27 wg-quick: linux: don't fail down when using systemd-resolved
+2019-08-24 compat: account for android-4.9 backport of addr_gen_mode
+2019-08-06 wg-quick: openbsd: fix alternate routing table syntax
+2019-08-06 Kbuild: account for upstream configuration maze changes
+2019-08-05 netlink: skip peers with invalid keys
+2019-08-03 compat: do not run bc on clean target
+2019-07-19 compat: support running in OpenVZ environments
+2019-07-11 noise: immediately rekey all peers after changing device private key
+2019-07-08 netlink: enforce that unused bits of flags are zero
+2019-07-08 wg-quick: android: refactor and add incoming allow rules
+2019-07-04 compat: define conversion constants for ancient kernels
+2019-07-02 (tag: 0.0.20190702) version: bump snapshot
+2019-07-02 receive: queue dead packets to napi queue instead of empty rx_queue
+2019-06-28 peer: use LIST_HEAD macro
+2019-06-28 netlink: cast struct over cb->args for type safety
+2019-06-28 compat: support RHEL8's skb_mark_not_on_list backport
+2019-06-25 compat: rhel backported list modifications
+2019-06-12 global: switch to coarse ktime
+2019-06-20 compat: unify custom function prefix/suffix
+2019-06-20 compat: some kernels weirdly backport prandom_u32_max
+2019-06-19 wg-quick: darwin: support being called from launchd
+2019-06-17 qemu: show signal when failing
+2019-06-03 blake2s: spacing
+2019-06-02 curve25519: not all linkers support bmi2 and adx
+2019-06-01 (tag: 0.0.20190601) version: bump snapshot
+2019-05-31 compat: don't call xgetbv on cpus with no XSAVE
+2019-05-31 blake2s: add ssse3 to nobs
+2019-05-31 blake2s: do not use xgetbv for ssse3 detection
+2019-05-31 tools: pass WG_ENDPOINT_RESOLUTION_RETRIES=infinity to systemd unit
+2019-05-31 (tag: 0.0.20190531) version: bump snapshot
+2019-05-11 tools: add wincompat layer to wg(8)
+2019-05-28 tools: allow setting WG_ENDPOINT_RESOLUTION_RETRIES
+2019-05-28 zinc: update copyright
+2019-05-08 blake2s: shorten ssse3 loop
+2019-05-04 blake2s,chacha: latency tweak
+2019-05-26 qemu: do not check for alignment with ubsan
+2019-05-26 zinc: arm64: use cpu_get_elf_hwcap accessor for 5.2
+2019-05-25 kbuild: account for recent upstream changes
+2019-05-24 timers: add jitter on ack failure reinitiation
+2019-05-17 qemu: build iproute2 with libmnl support
+2019-05-17 wg-quick: specify protocol to ip(8), because of inconsistencies
+2019-05-17 netlink: use new strict length types in policy for 5.2
+2019-05-17 wg-quick: look up existing routes properly
+2019-05-17 qemu: use newer iproute2 and kernel
+2019-05-07 socket: set ignore_df=1 on xmit
+2019-04-23 wg-quick: make darwin and freebsd path search strict like linux
+2019-04-21 wg-quick: freebsd: workaround SIOCGIFSTATUS race in FreeBSD kernel
+2019-04-14 compat: udp_tunnel: force cast sk_data_ready
+2019-04-06 (tag: 0.0.20190406) version: bump snapshot
+2019-04-06 allowedips: initialize list head when removing intermediate nodes
+2019-03-27 compat: backport skb_mark_not_on_list
+2019-03-27 blake2s: remove outlen parameter from final
+2019-03-27 blake2s: simplify
+2019-03-25 qemu: set framewarn 1280 for 64bit and 1024 for 32bit
+2019-03-25 device: use skb accessor functions where possible
+2019-03-25 allowedips: do not use __always_inline
+2019-03-25 peerlookup: rename from hashtables
+2019-03-23 tools: avoid unneccessary next_peer assignments in sort_peers()
+2019-03-14 wg-quick: add 'strip' subcommand
+2019-03-17 tools: warn if an AllowedIP has a nonzero host part
+2019-03-18 wg-quick: freebsd: export TMPDIR when restoring and don't make empty
+2019-03-14 global: the _bh variety of rcu helpers have been unified
+2019-03-14 compat: nf_nat_core.h was removed upstream
+2019-02-28 tools: add support for Haiku
+2019-02-28 tools: genkey: account for short reads of /dev/urandom
+2019-02-28 wg-quick: freebsd: rebreak interface loopback, while fixing localhost
+2019-02-27 (tag: 0.0.20190227) version: bump snapshot
+2019-02-27 queueing: net-next has changed signature of skb_probe_transport_header
+2019-02-26 allowedips: maintain per-peer list of allowedips
+2019-02-25 peer: only synchronize_rcu_bh and traverse trie once when removing all peers
+2019-02-25 netlink: don't remove allowed ips for new peers
+2019-02-17 Makefile: make the depmod path configurable
+2019-02-17 Makefile: don't duplicate code in install and modules-install
+2019-02-17 compat: backport ALIGN_DOWN
+2019-02-17 compat: ipv6_stub is sometimes null
+2019-02-08 tools: c_acc doesn't need to be initialized
+2019-02-05 tools: fight compiler slightly harder
+2019-02-04 chacha20: name enums
+2019-02-03 noise: store clamped key instead of raw key
+2019-02-03 chacha20poly1305: permit unaligned strides on certain platforms
+2019-02-02 hashtables: decouple hashtable allocations from the main device allocation
+2019-02-02 queueing: more reasonable allocator function convention
+2019-02-02 noise: whiten the nanoseconds portion of the timestamp
+2019-01-31 highlighter: when subtracting char, cast to unsigned
+2019-01-30 systemd: wg-quick should depend on nss-lookup.target
+2019-01-24 tools: remove unused check phony declaration
+2019-01-24 wg-quick: freebsd: allow loopback to work
+2019-01-23 (tag: 0.0.20190123) version: bump snapshot
+2019-01-22 netlink: use __kernel_timespec for handshake time
+2019-01-05 contrib: introduce simple highlighter library
+2019-01-11 global: normalize -> clamp
+2018-07-26 keygen-html: bring back pure javascript implementation
+2019-01-11 qemu: enable FP on MIPS
+2019-01-07 qemu: version bump to bash 5.0
+2019-01-07 Kconfig: IPsec isn't IPSec
+2019-01-06 ratelimiter: totalram_pages is now a function
+2019-01-05 noise: replace getnstimeofday64 with ktime_get_real_ts64
+2019-01-03 ratelimiter: build tests with !IPV6
+2019-01-03 qemu: version bump kernel
+2019-01-02 global: update copyright
+2018-12-28 netlink: auth socket changes against namespace of socket
+2018-12-20 tools: curve25519: handle unaligned loads/stores safely
+2018-12-18 (tag: 0.0.20181218) version: bump snapshot
+2018-12-16 makefile: use immediate expansion and use correct template patterns
+2018-12-17 netns: nmap != ncat
+2018-12-16 wg-quick: bring interface up while setting MTU
+2018-12-12 compat: account for Clang CFI
+2018-12-07 chacha20: do not define unused asm function
+2018-12-07 embeddable-wg-library: do not warn on unrecognized netlink attributes
+2018-11-24 compat: don't undef BUILD_BUG_ON for Clang >=8
+2018-11-19 chacha20,poly1305: simplify perlasm fanciness
+2018-11-19 jerry-rig: replace S_shipped with pl
+2018-11-19 (tag: 0.0.20181119) version: bump snapshot
+2018-11-19 chacha20,poly1305: do not use xlate
+2018-11-17 poly1305: make frame pointers for auxiliary calls
+2018-11-16 crypto: better path resolution and more specific generated .S
+2018-11-15 chacha20,poly1305: don't do compiler testing in generator and remove xor helper
+2018-11-15 crypto: resolve target prefix on buggy kernels
+2018-11-15 poly1305: cleanup leftover debugging changes
+2018-11-15 poly1305: only export neon symbols when in use
+2018-11-15 chacha20,poly1305: fix up for win64
+2018-11-15 (tag: 0.0.20181115) version: bump snapshot
+2018-11-15 perlasm: avoid rep ret
+2018-11-14 poly1305: specialize to wireguard
+2018-11-14 chacha20: specialize to wireguard
+2018-11-13 perlasm: cleanup whitespace
+2018-11-14 poly1305: adjust to kernel
+2018-11-14 chacha20: cleaner function declarations
+2018-11-12 chacha20: normalize names
+2018-11-12 chacha20: fixup win64 stack offsets
+2018-11-12 chacha20: simplify stack unwinding on ChaCha20_ctr32
+2018-11-12 chacha20: use DRAP idiom
+2018-11-12 chacha20: add hchacha_ssse3
+2018-11-12 chacha20: begin adapting to kernel setting
+2018-11-12 chacha20,poly1305: switch to perlasm originals on x86_64
+2018-11-09 chacha20,poly1305: use CONFIG_KERNEL_MODE_NEON in .pl on arm
+2018-11-08 chacha20,poly1305: switch to perlasm originals on mips and arm
+2018-11-11 global: various formatting tweeks
+2018-11-11 wg-quick: android: do not choke on empty allowed-ips
+2018-11-06 keygen-html: add missing glue macro
+2018-11-05 compat: csum_levels is new in 3.18 but backported to RHEL
+2018-10-27 qemu: bump default kernel
+2018-10-27 send: calculate inner checksums for all protocols
+2018-10-27 receive: assume all levels have been checksumed, not just outer
+2018-10-26 device: do not clear keys on sleep for PM_AUTOSLEEP
+2018-10-26 curve25519-x86_64: this was relicensed to BSD-3-Clause upstream
+2018-10-26 timers: it is always reasonable to remove a timer
+2018-10-26 ratelimiter: make hash calls explicit
+2018-10-25 makefile: include selftests in style check
+2018-10-25 timers: do not use wg_peer_get_maybe_zero
+2018-10-25 allowedips: fix sparse warnings in optional selftests
+2018-10-25 poly1305-donna64: mark large constants as ULL
+2018-10-25 send: consider dropped stage packets to be dropped
+2018-10-25 allowedips: fix up macros and annotations
+2018-10-25 ratelimiter: refcounter doesn't need to be atomic
+2018-10-25 global: do not allow compiler to reorder is_valid or is_dead
+2018-10-25 peer: another peer_remove cleanup
+2018-10-19 wg.8: AllowedIPs isn't actually required
+2018-10-19 wg.8: specify that wg(8) shows runtime info too
+2018-10-18 (tag: 0.0.20181018) version: bump snapshot
+2018-10-12 tools: wg-quick: wait for interface to disappear on freebsd
+2018-10-12 tools: don't fail if a netlink interface dump is inconsistent
+2018-10-10 main: get rid of unloaded debug message
+2018-10-09 tools: compile on gnu99
+2018-10-09 tools: use libc's endianness macro if no compiler macro
+2018-10-08 global: give if statements brackets and other cleanups
+2018-10-08 main: change module description
+2018-10-08 device: use textual error labels always
+2018-10-08 allowedips: swap endianness early on
+2018-10-08 timers: avoid using control statements in macro
+2018-10-08 allowedips: remove control statement from macro by rewriting
+2018-10-08 global: more nits
+2018-10-08 global: rename struct wireguard_ to struct wg_
+2018-10-08 netlink: do not stuff index into nla type
+2018-10-08 qemu: kill after 20 minutes
+2018-10-08 compat: look in Kbuild and Makefile since they differ based on arch
+2018-10-08 create-patch: blacklist instead of whitelist
+2018-10-07 global: prefix functions used in callbacks with wg_
+2018-10-07 compat: don't output for grep errors
+2018-10-07 (tag: 0.0.20181007) version: bump snapshot
+2018-10-07 global: style nits
+2018-10-07 crypto: clean up remaining .h->.c
+2018-10-07 allowedips: document additional nobs
+2018-10-07 makefile: do more generic wildcard so as to avoid rename issues
+2018-10-07 crypto: use BIT(i) & bitmap instead of (bitmap >> i) & 1
+2018-10-07 crypto: disable broken implementations in selftests
+2018-10-07 compat: clang cannot handle __builtin_constant_p
+2018-10-07 compat: make asm/simd.h conditional on its existence
+2018-10-06 compat: account for ancient ARM assembler
+2018-10-06 (tag: 0.0.20181006) version: bump snapshot
+2018-10-05 crypto: test all SIMD combinations
+2018-10-05 global: rename include'd C files to be .c
+2018-10-05 allowedips: remove ifdefs in favor of IS_ENABLED
+2018-10-05 wg-quick.8: add policy routing example
+2018-10-04 curve25519-arm: rearrange multiplications for better in-order performance
+2018-10-04 curve25519-arm: writeback to base register when possible
+2018-10-03 blake2s: always put a simd, even if not use()'d
+2018-10-03 simd: introduce useful disabling macro
+2018-10-03 Kconfig: do now allow IPV6=m,WG=y
+2018-10-03 curve25519-arm: adjust comment
+2018-10-03 curve25519-arm: use new simd api
+2018-09-30 chacha20-arm: use proper reteq macro instead of bxeq
+2018-10-02 qemu: show more messages in console the right way
+2018-10-01 qemu: support powerpc64le
+2018-10-01 qemu: give up and accept a mips64r2 world
+2018-10-01 ratelimiter: prefer IS_ENABLED
+2018-10-01 global: change BUG_ON to WARN_ON
+2018-10-01 poly1305: document rationale for base 2^26->2^64/32 conversion
+2018-09-30 crypto: use ZINC_ARCH macros
+2018-09-30 chacha20: no need to align ctx
+2018-09-30 chacha20: split chacha20_ctx into union
+2018-09-29 qemu: support m68k
+2018-09-29 crypto: add missing static keyword to fpu init functions
+2018-09-29 crypto: document what's used from <crypto/ beside #include
+2018-09-29 crypto: WARN_ON in module_init if selftest fails
+2018-09-28 simd: refactor simd availability handling
+2018-09-28 simd: return a bool from simd_relax
+2018-09-28 global: prefix all functions with wg_
+2018-09-28 poly1305-mips64: use compiler-defined macros in assembly
+2018-09-27 blake2s: rename arch function and use slicker le32 helper
+2018-09-27 blake2s: feed fpu functions PAGE_SIZE at a time
+2018-09-27 poly1305: feed fpu functions PAGE_SIZE at a time
+2018-09-27 chacha20: feed fpu functions PAGE_SIZE at a time
+2018-09-27 chacha20: test multiple page span in selftest
+2018-09-27 chacha20: break out of zero loops in selftest
+2018-09-27 crypto: prefer IS_ENABLED to ifdefs
+2018-09-26 crypto: ignore ARMv3
+2018-09-26 compat: kernels < 3.17 don't have read_cpuid_part
+2018-09-25 qemu: support more arm big endian platforms
+2018-09-25 crypto: rename DEBUG to SELFTEST
+2018-09-25 poly1305-arm: swap endianness in base 2^26 conversion
+2018-09-25 curve25519-arm: disable on big-endian
+2018-09-25 chacha20-arm,poly1305-arm: fix big-endian aarch64
+2018-09-25 curve25519: show all failures in test case
+2018-09-25 (tag: 0.0.20180925) version: bump snapshot
+2018-09-25 curve25519-hacl64: reduce stack usage under KASAN
+2018-09-25 chacha20: add bounds checking to selftests
+2018-09-25 chacha20-mips32r2: reduce stack and branches in loop, refactor jumptable handling
+2018-09-25 qemu: bump musl
+2018-09-24 crypto: make constant naming scheme consistent
+2018-09-24 hchacha20: keep in native endian in words
+2018-09-24 chacha20-arm: remove unused preambles
+2018-09-23 chacha20-arm: updated scalar code from Andy
+2018-09-23 poly1305-mips64: remove useless preprocessor error
+2018-09-23 crypto-arm: rework KERNEL_MODE_NEON handling again
+2018-09-23 crypto: flatten out makefile
+2018-09-22 curve25519-fiat32: work around m68k compiler stack frame bug
+2018-09-22 allowedips: work around kasan stack frame bug in selftest
+2018-09-21 chacha20-arm: use new scalar implementation
+2018-09-22 crypto-arm: rework KERNEL_MODE_NEON handling
+2018-09-21 global: reduce stack frame size
+2018-09-20 chacha20: add chunked selftest and test sliding alignments and hchacha20
+2018-09-21 chacha20-mips32r2: reduce jumptable entry size and stack usage
+2018-09-20 chacha20-mips32r2: use simpler calling convention
+2018-09-20 chacha20-arm: go with Ard's version to optimize for Cortex-A7
+2018-09-19 chacha20-mips32r2: remove reorder directives
+2018-09-19 chacha20-mips32r2: fix typo to allow reorder again
+2018-09-20 poly1305-mips32r2: remove all reorder directives
+2018-09-20 global: put SPDX identifier on its own line
+2018-09-20 ratelimiter: disable selftest with KASAN
+2018-09-19 crypto: do not waste space on selftest items
+2018-09-19 netlink: reverse my christmas trees
+2018-09-19 crypto: explicitly dual license
+2018-09-19 poly1305: account for simd being toggled off midway
+2018-09-19 allowedips: change from BUG_ON to WARN_ON
+2018-09-19 chacha20: prefer crypto_xor_cpy to avoid memmove
+2018-09-19 poly1305: no need to trick gcc 8.1
+2018-09-19 blake2s: simplify final function
+2018-09-18 poly1305: better module description
+2018-09-18 (tag: 0.0.20180918) version: bump snapshot
+2018-09-18 chacha20: add independent self test
+2018-09-18 chacha20poly1305: add __init to selftest helper functions
+2018-09-18 curve25519-arm: only compile if symbols will be used
+2018-09-18 chacha20-x86_64: use correct cut off for avx512-vl
+2018-09-18 poly1305-x86_64: show full struct for state
+2018-09-18 crypto: allow for disabling simd in zinc modules
+2018-09-17 chacha20-x86_64: more limited cascade
+2018-09-17 chacha20poly1305: relax simd between sg chunks
+2018-09-17 crypto: turn Zinc into individual modules
+2018-09-17 crypto: do not use -include trick
+2018-09-17 poly1305-x86_64: don't activate simd for small blocks
+2018-09-17 chacha20-x86_64: don't activate simd for small blocks
+2018-09-17 crypto: pass simd by reference
+2018-09-17 chacha20-x86_64: cascade down implementations
+2018-09-17 poly1305: do not require simd context for arch
+2018-09-16 crypto: make MIT
+2018-09-16 qemu: always pull and reset against integration tree
+2018-09-16 global: remove non-essential inline annotations
+2018-09-16 send/receive: reduce number of sg entries
+2018-09-15 simd: add __must_check annotation
+2018-09-13 chacha20-arm: swap scalar and neon functions
+2018-09-12 poly1305: precompute 5*r in init instead of blocks
+2018-09-12 curve25519-x86_64: remove useless define
+2018-09-11 chacha20: add constant for words in block
+2018-09-11 poly1305: rename finish to final
+2018-09-11 kconfig: make NEON depend on CPU_V7
+2018-09-11 crypto: make sure UML is properly disabled
+2018-09-10 crypto: do not use compound literals in selftests
+2018-09-10 blake2s-x86_64: fix whitespace errors
+2018-09-10 (tag: 0.0.20180910) version: bump snapshot
+2018-09-08 poly1305: switch to donna
+2018-09-08 poly1305: rewrite self tests from scratch
+2018-09-06 compat: move simd.h from crypto to compat since it's going upstream
+2018-09-06 compat: arch-namespace certain includes
+2018-09-06 compat: support neon.h on old kernels
+2018-09-06 crypto: use CRYPTOGAMS license
+2018-09-06 curve25519: arm: do not modify sp directly
+2018-09-04 (tag: 0.0.20180904) version: bump snapshot
+2018-09-04 global: always find OOM unlikely
+2018-09-04 global: prefer sizeof(*pointer) when possible
+2018-09-03 global: satisfy check_patch.pl errors
+2018-08-28 crypto: import zinc
+2018-09-02 uapi: reformat
+2018-09-02 tools: ipc: do not warn on unrecognized netlink attributes
+2018-09-02 netlink: insert peer version placeholder
+2018-08-28 curve25519-arm: prefix immediates with #
+2018-08-28 curve25519-arm: do not waste 32 bytes of stack
+2018-08-28 curve25519-arm: use ordinary prolog and epilogue
+2018-08-27 curve25519-arm: add spaces after commas
+2018-08-27 curve25519-arm: cleanups from lkml
+2018-08-26 curve25519-arm: reformat
+2018-08-18 curve25519-x86_64: let the compiler decide when/how to load constants
+2018-08-27 curve25519-hacl64: use formally verified C for comparisons
+2018-08-23 crypto: use unaligned helpers
+2018-08-24 Kconfig: use new-style help marker
+2018-08-24 compat: rng_is_initialized made it into 4.19
+2018-08-23 global: run through clang-format
+2018-08-21 wg-quick: check correct variable for route deduplication
+2018-08-12 wg-quick: darwin: prefer system paths for tools
+2018-08-09 (tag: 0.0.20180809) version: bump snapshot
+2018-08-08 netlink: don't start over iteration on multipart non-first allowedips
+2018-08-08 timers: include header in right file
+2018-08-08 curve25519-hacl64: correct u64_gte_mask
+2018-08-08 curve25519-hacl64: simplify u64_eq_mask
+2018-08-07 chacha20: use memmove in case buffers overlap
+2018-08-07 curve25519-x86_64: avoid use of r12
+2018-08-06 qemu: add easy git harness
+2018-08-06 chacha20poly1305: selftest: use arrays for test vectors
+2018-08-06 crypto: move simd context to specific type
+2018-08-04 compat: better atomic acquire/release backport
+2018-08-04 send: switch handshake stamp to an atomic
+2018-08-03 (tag: 0.0.20180802) version: bump snapshot
+2018-08-03 allowedips: use different macro names so as to avoid confusion
+2018-08-01 peer: ensure destruction doesn't race
+2018-08-02 noise: free peer references on failure
+2018-08-02 cookie: returned keypair might disappear if rcu lock not held
+2018-08-01 queueing: ensure strictly ordered loads and stores
+2018-08-01 queueing: document double-adding and reference conditions
+2018-08-01 peer: ensure resources are freed when creation fails
+2018-08-01 queueing: keep reference to peer after setting atomic state bit
+2018-08-01 allowedips: free root inside of RCU callback
+2018-08-01 hashtables: document immediate zeroing semantics
+2018-08-01 allowedips: avoid window of disappeared peer
+2018-08-01 allowedips: prevent double read in kref
+2018-07-31 chacha20poly1305: selftest: split up test vector constants
+2018-07-31 (tag: 0.0.20180731) version: bump snapshot
+2018-07-31 device: adjust comment
+2018-07-31 noise: use hex constant for tai64n offset
+2018-07-31 main: properly name label
+2018-07-31 noise: remove outdated comment
+2018-07-31 send: address of variable is never null
+2018-07-31 peer: simplify rcu reference counts
+2018-07-31 ratelimiter: prevent init/uninit race
+2018-07-31 main: add missing chacha20poly1305 header
+2018-07-28 curve25519-x86_64: tighten reductions modulo 2^256-38
+2018-07-28 curve25519-x86_64: simplify the final reduction by adding 19 beforehand
+2018-07-28 curve25519-x86_64: tighten the x25519 assembly
+2018-07-19 qemu: update musl and kernel
+2018-07-24 wg-quick: android: remove compat code
+2018-07-24 wg-quick: android: allow package to be overridden
+2018-07-21 qemu: show log if process crashes
+2018-07-19 embeddable-wg-library: do not left shift negative numbers
+2018-07-19 receive: check against proper return value type
+2018-07-18 (tag: 0.0.20180718) version: bump snapshot
+2018-07-18 recieve: disable NAPI busy polling
+2018-07-18 device: destroy workqueue before freeing queue
+2018-07-16 wg-quick: allow link local default gateway
+2018-07-12 receive: use gro call instead of plain call
+2018-07-11 receive: account for zero or negative budget
+2018-07-08 tools: only error on wg show if all interfaces fail
+2018-07-08 (tag: 0.0.20180708) version: bump snapshot
+2018-07-05 receive: use NAPI on the receive path
+2018-07-06 qemu: decide debug kernel based on KERNEL_VERSION
+2018-07-06 qemu: bump default kernel version
+2018-07-06 selftest: ratelimiter: improve chance of success via retry
+2018-07-05 wg-quick: android: support excluding applications
+2018-07-04 receive: style
+2018-07-04 device: print daddr not saddr in missing peer error
+2018-06-25 (tag: 0.0.20180625) version: bump snapshot
+2018-06-25 wg-quick: android: prevent outgoing handshake packets from being dropped
+2018-06-24 compat: more robust ktime backport
+2018-06-23 global: use fast boottime instead of normal boottime
+2018-06-23 global: use ktime boottime instead of jiffies
+2018-06-22 tools: fix misspelling of strchrnul in comment
+2018-06-22 manpages: eliminate whitespace at the end of the line
+2018-06-22 global: fix a few typos
+2018-06-22 simd: add missing header
+2018-06-21 poly1305: give linker the correct constant data section size
+2018-06-21 main: test poly1305 before chacha20poly1305
+2018-06-21 receive: don't toggle bh
+2018-06-20 (tag: 0.0.20180620) version: bump snapshot
+2018-06-20 poly1305: add missing string.h header
+2018-06-19 compat: use stabler lkml links
+2018-06-19 ratelimiter: do not allow concurrent init and uninit
+2018-06-19 ratelimiter: mitigate reference underflow
+2018-06-19 receive: drop handshake packets if rng is not initialized
+2018-06-18 noise: wait for crng before taking locks
+2018-06-18 netlink: maintain static_identity lock over entire private key update
+2018-06-18 noise: take locks for ss precomputation
+2018-06-17 qemu: bump default kernel
+2018-06-17 wg-quick: android: don't forget to free compiled regexes
+2018-06-17 wg-quick: android: disable roaming to v6 networks when v4 is specified
+2018-06-17 dns-hatchet: apply resolv.conf's selinux context to new resolv.conf
+2018-06-16 simd: no need to restore fpu state when no preemption
+2018-06-16 simd: encapsulate fpu amortization into nice functions
+2018-06-16 queueing: re-enable preemption periodically to lower latency
+2018-06-16 queueing: remove useless spinlocks on sc
+2018-06-14 tools: getentropy requires 10.12
+2018-06-14 chacha20poly1305: use slow crypto on -rt kernels on arm too
+2018-06-13 (tag: 0.0.20180613) version: bump snapshot
+2018-06-13 chacha20poly1305: use slow crypto on -rt kernels
+2018-06-08 tools: support getentropy(3)
+2018-06-06 tools: encoding: add missing static array constraints
+2018-06-04 wg-quick: android: change name of intent
+2018-06-02 chacha20: add missing include to header
+2018-05-31 wg-quick: android: delay setting users until end
+2018-05-31 (tag: 0.0.20180531) version: bump snapshot
+2018-05-31 qemu: bump default version
+2018-05-30 tools: constanter time encoding
+2018-05-30 device: do not assume dst is always valid
+2018-05-30 poly1305: mips: compute S on fly
+2018-05-30 chacha20poly1305: test for authtag failure
+2018-05-30 chacha20poly1305: test scattergather functions too
+2018-05-30 crypto: consistent constification
+2018-05-30 wg-quick: darwin: set DNS servers after delay on route change
+2018-05-30 chacha20poly1305: combine stack variables into union
+2018-05-29 chacha20poly1305: split up into separate files
+2018-05-29 curve25519: x86_64: make symbol static
+2018-05-29 curve25519: x86_64: satisfy sparse
+2018-05-27 wg-quick: freebsd: configure as p2p link
+2018-05-27 wg-quick: darwin: add multiple IP addresses
+2018-05-27 wg-quick: determine IPs when saving interface
+2018-05-24 compat: don't clash with get_random_u32 backports
+2018-05-24 (tag: 0.0.20180524) version: bump snapshot
+2018-05-23 wg-quick: freebsd: work around security vulnerabilities in bash
+2018-05-23 wg-quick: allow enumeration of socket files
+2018-05-23 wg-quick: better bash completion for non-renaming OSes
+2018-05-23 wg-quick: support FreeBSD/Darwin search path
+2018-05-23 tools: always pass -v as first argument to install
+2018-05-22 wg-quick: openbsd: add new implementation
+2018-05-21 wg-quick: freebsd: add new implementation
+2018-05-22 wg-quick: darwin: do not remove routes when no real interface
+2018-05-22 wg-quick: darwin: rename namefile environment variable
+2018-05-21 tools: fix OpenBSD build
+2018-05-20 compat: work around qcom 4.9 backports
+2018-05-20 qemu: bump default kernel for gcc 8.1
+2018-05-19 allowedips: set pointer to null before freeing
+2018-05-22 ncat-client-server: do not always call sudo and use env bash
+2018-05-19 (tag: 0.0.20180519) version: bump snapshot
+2018-05-19 timers: no need to clear keepalive in persistent keepalive
+2018-05-19 timers: clear send_keepalive timer on sending handshake response
+2018-05-19 timers: fix up comment
+2018-05-19 timers: remove slack_time
+2018-05-18 timers: reinitialize state on init
+2018-05-18 tools: fix errno propagation and messages
+2018-05-18 timers: round up instead of down in slack_time
+2018-02-13 chacha20poly1305: add mips32 implementation
+2018-05-18 device: remove allowedips before individual peers
+2018-05-17 wg-quick: darwin: simpler inclusion check
+2018-05-17 wg-quick: darwin: reorder functions
+2018-05-17 wg-quick: darwin: networksetup does not like missing stdio
+2018-05-17 wg-quick: darwin: avoid routing loop if no default
+2018-05-17 wg-quick: darwin: sometimes there are no network services
+2018-05-16 wg-quick: use invoking shell in auto rooting
+2018-05-16 wg-quick: add intentionally undocumented userspace implementation knob
+2018-05-16 wg-quick: darwin: use bash from environment and require bash 4+
+2018-05-16 wg-quick: darwin: restore DNS on down
+2018-05-16 wg-quick: darwin: bash correctness
+2018-05-15 wg-quick: darwin: remove v6 routes after shutdown
+2018-05-15 wg-quick: darwin: ensure socket directory exists
+2018-05-15 dns-hatchet: update paths
+2018-05-15 (tag: 0.0.20180514) version: bump snapshot
+2018-05-15 ncat-client-server: add wg-quick variant
+2018-05-14 wg-quick: add darwin implementation
+2018-05-14 compat: backport for OpenSUSE 15
+2018-05-14 wg-quick: add wg symlink
+2018-05-14 wg-quick: add android implementation
+2018-05-14 tools: reorganize for multiplatform wg-quick
+2018-05-14 allowedips: Fix graphviz output after endianness patch
+2018-05-13 (tag: 0.0.20180513) version: bump snapshot
+2018-05-13 compat: don't clear header bits on RHEL
+2018-05-10 compat: handle RHEL 7.5's recent backports
+2018-05-13 queueing: preserve pfmemalloc header bit
+2018-05-11 chacha20poly1305: make gcc 8.1 happy
+2018-05-13 socket: use skb_put_data
+2018-05-05 wg-quick: preliminary support for go implementation
+2018-05-10 allowedips: simplify arithmetic
+2018-05-05 allowedips: produce better assembly with unsigned arithmetic
+2018-05-02 allowedips: use native endian on lookup
+2018-05-10 allowedips: add selftest for allowedips_walk_by_peer
+2018-05-03 embeddable-wg-library: zero attribute padding
+2018-05-02 keygen-html: add zip file example
+2018-04-23 qemu: retry on 404 in wget for kernel.org race
+2018-04-20 (tag: 0.0.20180420) version: bump snapshot
+2018-04-18 poly1305: do not place constants in different sections
+2018-04-16 compat: remove unused dev_recursion_level backport
+2018-04-16 blake2s: remove unused helper
+2018-04-16 send: simplify skb_padding with nice macro
+2018-04-14 send: account for route-based MTU
+2018-04-14 wg-quick: account for specified fwmark in auto routing mode
+2018-04-14 qemu: bump default version
+2018-04-13 (tag: 0.0.20180413) version: bump snapshot
+2018-04-05 chacha20poly1305: put magic constant behind macro
+2018-04-05 chacha20poly1305: add self tests from wycheproof
+2018-04-04 curve25519: add self tests from wycheproof
+2018-04-04 wg-quick.8: fix typo
+2018-03-03 curve25519: precomp const correctness
+2018-03-03 curve25519: memzero in batches
+2018-02-25 curve25519: use cmov instead of xor for cswap
+2018-02-01 curve25519: use precomp implementation instead of sandy2x
+2018-03-09 compat: support OpenSUSE 15
+2018-03-09 compat: silence warning on frankenkernels
+2018-03-07 compat: stable kernels are now receiving b87b619
+2018-03-04 wg-quick: hide errors on save
+2018-03-04 (tag: 0.0.20180304) version: bump snapshot
+2018-02-28 contrib: add extract-handshakes kprobe example
+2018-02-28 wg-quick: if resolvconf/run/iface exists, use it
+2018-02-28 wg-quick: if resolvconf/interface-order exists, use it
+2018-02-28 noise: align static_identity keys
+2018-02-28 compat: use correct -include path
+2018-02-27 noise: fix function prototype
+2018-02-27 global: in gnu code, use un-underscored asm
+2018-02-26 messages: MESSAGE_TOTAL is unused
+2018-02-26 crypto: read only after init
+2018-02-24 Kconfig: require DST_CACHE explicitly
+2018-03-01 Revert "contrib: keygen-html: rewrite in pure javascript"
+2018-02-23 contrib: keygen-html: rewrite in pure javascript
+2018-02-23 compat: workaround netlink refcount bug
+2018-02-21 contrib: embedded-wg-library: add key generation functions
+2018-02-21 allowedips: fix comment style
+2018-02-21 contrib: embedded-wg-library: add ability to add and del interfaces
+2018-02-20 queueing: skb_reset: mark as xnet
+2018-02-18 (tag: 0.0.20180218) version: bump snapshot
+2018-02-17 tools: fixup errno handling
+2018-02-17 tools: FreeBSD doesn't have EAI_NODATA
+2018-02-17 tools: do not collide types with libc clashes
+2018-02-15 contrib: add embeddable wireguard library
+2018-02-17 wg(8): clarify phrasing
+2018-02-16 tools: allow in-line comments
+2018-02-15 external-tests: update go version
+2018-02-14 tools: normalize strncpy/snprintf usage
+2018-02-14 blake2s: use union instead of casting
+2018-02-14 allowedips: indicate to clang-analyzer that trie is non-null
+2018-02-12 socket: free skb if there isn't an endpoint
+2018-02-12 qemu: more granular memleak detection
+2018-02-12 netns: replace n0 ip with ip0, per custom
+2018-02-08 poly1305: fix up selftest counter
+2018-02-06 qemu: add support for powerpc
+2018-02-06 wg-quick: match from beginning rather than shift right
+2018-02-05 tools: endian.h is not portable
+2018-02-02 keygen-html: fix up copyright
+2018-02-02 (tag: 0.0.20180202) version: bump snapshot
+2018-02-02 qemu: update base versions
+2018-02-01 curve25519: break more things with more test cases
+2018-02-01 curve25519: replace fiat64 with faster hacl64
+2018-01-31 curve25519: replace hacl64 with fiat64
+2018-02-01 curve25519: verify that specialized basepoint implementations are correct
+2018-01-31 tools: dedup secret normalization
+2018-01-30 chacha20poly1305: better buffer alignment
+2018-01-30 chacha20poly1305: use existing rol32 function
+2018-01-29 tools: fread doesn't change errno
+2018-01-29 device: let udev know what kind of device we are
+2018-01-23 qemu: disable AVX-512 in userland
+2018-01-23 qemu: disable PIE for compilation
+2018-01-22 contrib: keygen-html: share curve25519 implementation with kernel
+2018-01-22 tools: share curve25519 implementations with kernel
+2018-01-19 poly1305: add poly-specific self-tests
+2018-01-18 curve25519-fiat32: uninline certain functions
+2018-01-18 (tag: 0.0.20180118) version: bump snapshot
+2018-01-18 contrib: keygen-html: update curve25519 implementation
+2018-01-18 tools: import new curve25519 implementations
+2018-01-18 curve25519: wire up new impls and remove donna
+2018-01-18 curve25519: resolve symbol clash between fe types
+2018-01-18 curve25519: import 64-bit hacl-star implementation
+2018-01-18 curve25519: import 32-bit fiat-crypto implementation
+2018-01-15 curve25519: modularize implementation
+2018-01-15 poly1305: remove indirect calls
+2018-01-18 tools: plug memleak in config error path
+2018-01-10 external-tests: add python implementation
+2018-01-10 wg-quick: ifnames have max len of 15
+2018-01-08 socket: check for null socket before fishing out sport
+2018-01-03 global: year bump
+2017-12-29 receive: treat packet checking as irrelevant for timers
 2017-12-21 (tag: 0.0.20171221) version: bump snapshot
 2017-12-21 compat: kernels < 3.13 modified genl_ops
 2017-12-13 crypto: compile on UML
@@ -82,7 +732,7 @@
 2017-11-01 compat: unbreak unloading on kernels 4.6 through 4.9
 2017-10-31 timers: switch to kees' new timer_list functions
 2017-10-31 wg-quick: save all hooks on save
-2017-10-31 version: bump snapshot
+2017-10-31 (tag: 0.0.20171031) version: bump snapshot
 2017-10-31 wg-quick: fsync the temporary file before renaming
 2017-10-31 wg-quick: allow for saving existing interface
 2017-10-31 contrib: add reresolve-dns
@@ -151,7 +801,7 @@
 2017-10-11 send: do not requeue if packet is dead
 2017-10-10 compat: move version logic to compat.h and out of main .c
 2017-10-10 tools: store tail pointer to make coalescing peers fast
-2017-10-09 (origin/master) tools: warn once on unrecognized items
+2017-10-09 tools: warn once on unrecognized items
 2017-10-09 routingtable: iterate progressively
 2017-10-09 routingtable: only use device's mutex, not a special rt one
 2017-10-08 crypto/x86_64: satisfy stack validation 2.0
@@ -225,7 +875,7 @@
 2017-09-14 routingtable: satisfy sparse
 2017-09-14 socket: satisfy sparse
 2017-09-11 device: IFF_NO_QUEUE is a private flag, not a public one
-2017-09-07 (tag: 0.0.20170907, upstream) version: bump snapshot
+2017-09-07 (tag: 0.0.20170907) version: bump snapshot
 2017-09-07 compat: fix padata to work with 4.13
 2017-09-06 wg-quick: only bash complete existing interfaces for down
 2017-08-23 tools: fix removal of psk
@@ -673,7 +1323,7 @@
 2016-07-26 timers: use more clear pow macro
 2016-07-23 ratelimiter: correct comment
 2016-07-22 timers: upstream removed the slack concept
-2016-07-22 (tag: experimental-0.0.20160722, patch-queue/upstream) tools: use stream instead of seqpacket
+2016-07-22 (tag: experimental-0.0.20160722) tools: use stream instead of seqpacket
 2016-07-22 tools: Use seqpacket instead of dgram
 2016-07-05 index hashtable: run random indices through siphash
 2016-07-11 cookie: do not expose csprng directly

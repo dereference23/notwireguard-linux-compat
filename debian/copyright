@@ -1,20 +1,11 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: WireGuard
+Upstream-Name: WireGuard Linux Compat
 Source: https://www.wireguard.com/
 Upstream-Contact: WireGuard mailing list <wireguard@lists.zx2c4.com>
 
 Files: *
 Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
 License: GPL-2
-
-Files: contrib/examples/embeddable-wg-library/*
-Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
-License: LGPL-2.1+
-
-Files: contrib/examples/embeddable-wg-library/wireguard.c
-Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>
- 2008-2012 Pablo Neira Ayuso <pablo@netfilter.org>
-License: LGPL-2.1+
 
 Files: src/crypto/*
 Copyright: 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>

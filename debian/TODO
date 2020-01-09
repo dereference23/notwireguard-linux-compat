@@ -1,8 +1,4 @@
-Debian Packaging work for WireGuard:
-
- * consider make check for wg during build: this depends on
-   scan-build, which is part of clang, but also wants to clean the
-   build tree first.  Currently, we don't do any build-time tests.
+Debian Packaging work for WireGuard Linux Compat modules:
 
  * autopkgtest:
 
