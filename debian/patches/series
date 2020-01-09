@@ -1,3 +1,2 @@
 0001-Avoid-trying-to-use-git-during-the-build.patch
-0002-Avoid-requiring-glibc-2.25-for-wireguard-tools.patch
 0003-compat-fix-on-debian-4.9.168-in-sloppy-manner.patch
