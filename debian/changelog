@@ -1,3 +1,9 @@
+wireguard-linux-compat (0.0.20200105-1) unstable; urgency=medium
+
+  * New upstream release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 18 Jan 2020 09:55:11 -0500
+
 wireguard-linux-compat (0.0.20191226-1) unstable; urgency=medium
 
   * new upstream source package (Closes: #948503)
