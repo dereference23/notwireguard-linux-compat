@@ -12,10 +12,10 @@ a stop-gap solution for the Debian package.
  1 file changed, 6 insertions(+)
 
 diff --git a/src/compat/compat.h b/src/compat/compat.h
-index a608fb3..bf34fb0 100644
+index 824f57c..e326c39 100644
 --- a/src/compat/compat.h
 +++ b/src/compat/compat.h
-@@ -857,6 +857,12 @@ static inline void skb_mark_not_on_list(struct sk_buff *skb)
+@@ -882,6 +882,12 @@ static inline void skb_mark_not_on_list(struct sk_buff *skb)
  #endif
  #endif
  
