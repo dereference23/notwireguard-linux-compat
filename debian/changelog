@@ -1,3 +1,9 @@
+wireguard-linux-compat (0.0.20200121-2) unstable; urgency=medium
+
+  * Import module reload postinst script from wireguard package
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 22 Jan 2020 13:08:02 -0500
+
 wireguard-linux-compat (0.0.20200121-1) unstable; urgency=medium
 
   * New upstream release
