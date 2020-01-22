@@ -1,0 +1,53 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    install)
+    ;;
+    
+    configure|reconfigure)
+	# Nothing to do if the wireguard module is not already loaded.
+	if [ ! -f "/sys/module/wireguard/version" ]; then
+	    exit 0
+	fi
+
+        # Get the version of the current loaded module:
+	old_version="$(cat /sys/module/wireguard/version)"
+        # Get the version of the latest available module:
+	if ! new_version="$(modinfo -F version wireguard 2>/dev/null)"; then 
+            exit 0
+        fi
+
+	if dpkg --compare-versions "$old_version" lt "$new_version"; then
+	    if [ -d /run/systemd/system ]; then
+		systemctl daemon-reload || true
+		units="$(systemctl list-units --state=active --plain --no-legend 'wg-quick@*.service' | awk '{print $1}')"
+		if [ -n "$units" ]; then
+		    echo "Stopping currently active wg-quick@ unit instances..." >&2
+                    systemctl stop $units || true
+		fi
+            fi
+	    if [ -n "$(wg show interfaces)" ]; then
+		echo "Warning: Wireguard interfaces currently configured, not reloading module" >&2
+	    else
+		echo "Reloading wireguard module..." >&2
+		if ! rmmod wireguard ; then
+		    echo "Warning: failed to unload wireguard module" >&2
+                else
+		    modprobe wireguard
+                fi
+	    fi
+	    if [ -d /run/systemd/system ]; then
+		if [ -n "$units" ]; then
+		    echo "Starting previously active wg-quick@ unit instances..." >&2
+                    systemctl start $units || true
+		fi
+	    fi
+        fi
+	;;
+    *)
+	;;
+esac
+
+#DEBHELPER#
+exit 0
