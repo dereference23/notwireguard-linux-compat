@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+#DEBHELPER#
+
 case "$1" in
     install)
     ;;
@@ -54,5 +56,4 @@ case "$1" in
 	;;
 esac
 
-#DEBHELPER#
 exit 0
