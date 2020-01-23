@@ -1,3 +1,10 @@
+wireguard-linux-compat (0.0.20200121-3) unstable; urgency=medium
+
+  * ensure dkms runs in postinst before we consider reloading the module
+    (Closes: #949672, #949670)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 23 Jan 2020 10:57:44 -0500
+
 wireguard-linux-compat (0.0.20200121-2) unstable; urgency=medium
 
   * Import module reload postinst script from wireguard package
