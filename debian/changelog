@@ -1,3 +1,9 @@
+wireguard-linux-compat (0.0.20200128-1) unstable; urgency=medium
+
+  * new upstream release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 29 Jan 2020 10:19:24 -0500
+
 wireguard-linux-compat (0.0.20200121-3) unstable; urgency=medium
 
   * ensure dkms runs in postinst before we consider reloading the module
