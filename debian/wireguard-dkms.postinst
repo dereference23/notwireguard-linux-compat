@@ -3,6 +3,16 @@ set -e
 
 #DEBHELPER#
 
+reboot_required() {
+        # trigger an update notification that recommends a reboot
+        # (used by unattended-upgrades etc.)
+        touch /run/reboot-required || true
+
+        if ! grep -Fqsx wireguard-dkms /run/reboot-required.pkgs; then
+            echo wireguard-dkms >> /run/reboot-required.pkgs || true
+        fi
+}
+
 case "$1" in
     install)
     ;;
@@ -15,6 +25,7 @@ case "$1" in
 
         # Do nothing if the "wireguard" package is not on the system.
         if ! dpkg --status wireguard >/dev/null 2>/dev/null; then
+            reboot_required
             exit 0
         fi
 
@@ -35,10 +46,12 @@ case "$1" in
 		fi
             fi
 	    if [ -n "$(wg show interfaces)" ]; then
+		reboot_required
 		echo "Warning: Wireguard interfaces currently configured, not reloading module" >&2
 	    else
 		echo "Reloading wireguard module..." >&2
 		if ! rmmod wireguard ; then
+		    reboot_required
 		    echo "Warning: failed to unload wireguard module" >&2
                 else
 		    modprobe wireguard
