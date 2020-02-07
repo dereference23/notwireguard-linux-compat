@@ -1,3 +1,15 @@
+wireguard-linux-compat (0.0.20200205-1) unstable; urgency=medium
+
+  [ Unit 193 ]
+  * d/wireguard-dkms.postinst: If we don't reload the module, signal a
+    reboot is required.  (Closes: #944466)
+
+  [ Daniel Kahn Gillmor ]
+  * New upstream release
+  * Avoid asking for reboot unnecessarily if old module is not loaded
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 08 Feb 2020 10:03:01 -0500
+
 wireguard-linux-compat (0.0.20200128-1) unstable; urgency=medium
 
   * new upstream release
