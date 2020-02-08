@@ -23,12 +23,6 @@ case "$1" in
 	    exit 0
 	fi
 
-        # Do nothing if the "wireguard" package is not on the system.
-        if ! dpkg --status wireguard >/dev/null 2>/dev/null; then
-            reboot_required
-            exit 0
-        fi
-
         # Get the version of the current loaded module:
 	old_version="$(cat /sys/module/wireguard/version)"
         # Get the version of the latest available module:
@@ -37,6 +31,12 @@ case "$1" in
         fi
 
 	if dpkg --compare-versions "$old_version" lt "$new_version"; then
+            # Do nothing if the "wireguard" package is not on the system.
+            if ! dpkg --status wireguard >/dev/null 2>/dev/null; then
+                reboot_required
+                exit 0
+            fi
+
 	    if [ -d /run/systemd/system ]; then
 		systemctl daemon-reload || true
 		units="$(systemctl list-units --state=active --plain --no-legend 'wg-quick@*.service' | awk '{print $1}')"
