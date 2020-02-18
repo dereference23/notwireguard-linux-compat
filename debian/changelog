@@ -1,3 +1,12 @@
+wireguard-linux-compat (0.0.20200215-1) unstable; urgency=medium
+
+  * New upstream version
+  * Minor packaging cleanup:
+   - wrap-and-sort -ast
+   - cleanup whitespace in postinst
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 17 Feb 2020 22:06:31 -0500
+
 wireguard-linux-compat (0.0.20200205-1) unstable; urgency=medium
 
   [ Unit 193 ]
