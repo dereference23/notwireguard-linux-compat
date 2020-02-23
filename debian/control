@@ -31,6 +31,3 @@ Description: fast, modern, secure kernel VPN tunnel (DKMS version)
  .
  This package uses DKMS to automatically build the wireguard kernel
  module.
- .
- The module will be reloaded on upgrade if the wireguard metapackage
- is also installed.
