@@ -1,3 +1,9 @@
+wireguard-linux-compat (0.0.20200215-2) unstable; urgency=medium
+
+  * Stop reloading kernel module based on metapackage installation.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 24 Feb 2020 10:11:44 -0500
+
 wireguard-linux-compat (0.0.20200215-1) unstable; urgency=medium
 
   * New upstream version
