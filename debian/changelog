@@ -1,3 +1,10 @@
+wireguard-linux-compat (0.0.20200318-1) unstable; urgency=medium
+
+  * New upstream release.
+  * d/watch: Update to find new releases.
+
+ -- Unit 193 <unit193@ubuntu.com>  Fri, 20 Mar 2020 17:22:16 -0400
+
 wireguard-linux-compat (0.0.20200215-2) unstable; urgency=medium
 
   * Stop reloading kernel module based on metapackage installation.
