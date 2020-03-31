@@ -1,3 +1,14 @@
+wireguard-linux-compat (1.0.20200330-1) unstable; urgency=medium
+
+  [ Daniel Kahn Gillmor ]
+  * Add Unit193 to Uploaders
+
+  [ Unit 193 ]
+  * New upstream release.
+  * Refresh patch.
+
+ -- Unit 193 <unit193@ubuntu.com>  Mon, 30 Mar 2020 21:13:12 -0400
+
 wireguard-linux-compat (0.0.20200318-1) unstable; urgency=medium
 
   [ Unit 193 ]
