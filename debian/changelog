@@ -1,3 +1,9 @@
+wireguard-linux-compat (1.0.20200401-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Unit 193 <unit193@ubuntu.com>  Wed, 01 Apr 2020 17:44:49 -0400
+
 wireguard-linux-compat (1.0.20200330-1) unstable; urgency=medium
 
   [ Daniel Kahn Gillmor ]
