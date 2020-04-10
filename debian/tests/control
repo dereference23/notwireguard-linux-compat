@@ -1,6 +1,15 @@
 Tests: ncat-client
-Restrictions: needs-root, isolation-machine
+Restrictions: needs-root, isolation-machine, flaky, skippable
 Depends:
+ wireguard-tools,
  iproute2,
  wget,
+ @,
+
+Tests: netns-mini
+Restrictions: needs-root, isolation-machine
+Depends:
+ wireguard-tools,
+ iproute2,
+ iputils-ping,
  @,

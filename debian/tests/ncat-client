@@ -15,7 +15,7 @@ if wget -q --tries=2 --timeout=5 -O "${AUTOPKGTEST_ARTIFACTS}/index.html" http:/
 fi
 
 printf "Loading wireguard configuration to demo server...\n"
-/usr/share/doc/wireguard-tools/examples/ncat-client-server/client.sh
+/usr/share/doc/wireguard-tools/examples/ncat-client-server/client.sh || exit 77
 
 printf "Retrieving demo/sample webpage...\n"
 wget -q --tries=2 --timeout=5 -O "${AUTOPKGTEST_ARTIFACTS}/index.html" http://192.168.4.1
