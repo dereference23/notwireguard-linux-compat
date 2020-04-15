@@ -1,1 +1,2 @@
 0001-Makefile-do-not-use-git-to-get-version-number.patch
+0002-Avoid-trying-to-compile-on-debian-5.5-kernels-Closes.patch
