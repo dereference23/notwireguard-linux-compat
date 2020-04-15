@@ -1,3 +1,14 @@
+wireguard-linux-compat (1.0.20200413-1) unstable; urgency=medium
+
+  [ Unit 193 ]
+  * New upstream release.
+
+  [ Jason A. Donenfeld ]
+  * debian: patches: remove old patch
+  * debian: tests: add netns-mini and mark ncat-client as flaky
+
+ -- Unit 193 <unit193@ubuntu.com>  Wed, 15 Apr 2020 03:38:20 -0400
+
 wireguard-linux-compat (1.0.20200401-1) unstable; urgency=medium
 
   * New upstream release.
