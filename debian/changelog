@@ -1,3 +1,10 @@
+wireguard-linux-compat (1.0.20200413-2) unstable; urgency=medium
+
+  * wrap-and-sort -ast
+  * Avoid trying to compile on debian 5.5 kernels (Closes: #956241)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 15 Apr 2020 17:30:16 -0400
+
 wireguard-linux-compat (1.0.20200413-1) unstable; urgency=medium
 
   [ Unit 193 ]
