@@ -2,7 +2,8 @@ Source: wireguard-linux-compat
 Section: net
 Priority: optional
 Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Uploaders: Unit 193 <unit193@ubuntu.com>
+Uploaders:
+ Unit 193 <unit193@ubuntu.com>,
 Build-Depends:
  debhelper-compat (= 12),
  dkms,
