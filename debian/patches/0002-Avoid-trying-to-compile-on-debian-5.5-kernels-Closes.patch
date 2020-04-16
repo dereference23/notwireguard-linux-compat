@@ -21,22 +21,21 @@ probably cause dkms to avoid building wireguard.ko on the custom
 kernel.  But we decided that corner case is too obscure to make it
 worth making the test logic here more complex and fiddly.
 ---
- src/dkms.conf | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ src/dkms.conf | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/src/dkms.conf b/src/dkms.conf
-index 7306721..9b5ad82 100644
+index 7306721..3e57155 100644
 --- a/src/dkms.conf
 +++ b/src/dkms.conf
-@@ -5,5 +5,12 @@ AUTOINSTALL=yes
+@@ -5,5 +5,11 @@ AUTOINSTALL=yes
  BUILT_MODULE_NAME="wireguard"
  DEST_MODULE_LOCATION="/kernel/net"
  
 -# requires kernel 3.10 - 5.5, inclusive:
 -BUILD_EXCLUSIVE_KERNEL="^((5\.[0-5]($|[.-]))|(4\.)|(3\.1[0-9]))"
 +
-+if ls /boot/config-5.5.* >/dev/null 2>&1 && \
-+    grep -Fqx CONFIG_WIREGUARD=m /boot/config-5.5.* ; then
++if grep -Fqsx CONFIG_WIREGUARD=m /boot/config-5.5.* ; then
 +    # debian backported wireguard into the 5.5 release:
 +    BUILD_EXCLUSIVE_KERNEL="^((5\.[0-4]($|[.-]))|(4\.)|(3\.1[0-9]))"
 +else
