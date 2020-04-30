@@ -1,3 +1,15 @@
+wireguard-linux-compat (1.0.20200429-1) unstable; urgency=medium
+
+  [ Daniel Kahn Gillmor ]
+  * simplify test for debian kernel with backported wireguard
+  * improve fix to avoid problems with wireguard against debian backported 5.5
+
+  [ Unit 193 ]
+  * New upstream release.
+  * d/control: Update my email address.
+
+ -- Unit 193 <unit193@debian.org>  Thu, 30 Apr 2020 18:11:28 -0400
+
 wireguard-linux-compat (1.0.20200413-2) unstable; urgency=medium
 
   * wrap-and-sort -ast
