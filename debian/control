@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Uploaders:
- Unit 193 <unit193@ubuntu.com>,
+ Unit 193 <unit193@debian.org>,
 Build-Depends:
  debhelper-compat (= 12),
  dkms,
