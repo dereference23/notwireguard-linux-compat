@@ -29,7 +29,7 @@ doesn't become more fragile.
  1 file changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/src/dkms.conf b/src/dkms.conf
-index 7306721..ae9bd71 100644
+index ce85da8..74ba498 100644
 --- a/src/dkms.conf
 +++ b/src/dkms.conf
 @@ -5,5 +5,11 @@ AUTOINSTALL=yes

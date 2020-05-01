@@ -1,2 +1,3 @@
 0001-Makefile-do-not-use-git-to-get-version-number.patch
 0002-Avoid-trying-to-compile-on-debian-5.5-kernels-Closes.patch
+0003-ip6_dst_lookup_flow-was-backported-to-4.19.118-for-d.patch
