@@ -1,3 +1,10 @@
+wireguard-linux-compat (1.0.20200429-2) unstable; urgency=medium
+
+  * handle backport of ip6_dst_lookup_flow to linux 4.19.118 (Closes: #959157)
+  * add dependency on bc (Closes: #956869)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 01 May 2020 13:33:05 -0400
+
 wireguard-linux-compat (1.0.20200429-1) unstable; urgency=medium
 
   [ Daniel Kahn Gillmor ]
