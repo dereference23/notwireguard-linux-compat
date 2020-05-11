@@ -17,7 +17,6 @@ Package: wireguard-dkms
 Architecture: all
 Section: kernel
 Depends:
- bc,
  ${misc:Depends},
  ${perl:Depends},
 Recommends:
