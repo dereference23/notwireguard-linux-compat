@@ -5,7 +5,7 @@ Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Uploaders:
  Unit 193 <unit193@debian.org>,
 Build-Depends:
- debhelper-compat (= 12),
+ debhelper-compat (= 13),
  dkms,
 Standards-Version: 4.5.0
 Homepage: https://www.wireguard.com
