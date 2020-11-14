@@ -1,3 +1,9 @@
+wireguard-linux-compat (1.0.20201112-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Unit 193 <unit193@debian.org>  Fri, 13 Nov 2020 19:27:49 -0500
+
 wireguard-linux-compat (1.0.20200908-1) unstable; urgency=medium
 
   * New upstream release.
