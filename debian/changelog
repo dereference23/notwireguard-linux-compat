@@ -1,3 +1,10 @@
+wireguard-linux-compat (1.0.20201221-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Update Standards-Version to 4.5.1.
+
+ -- Unit 193 <unit193@debian.org>  Tue, 22 Dec 2020 14:58:58 -0500
+
 wireguard-linux-compat (1.0.20201112-1) unstable; urgency=medium
 
   * New upstream release.
