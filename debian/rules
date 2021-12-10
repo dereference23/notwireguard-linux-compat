@@ -11,7 +11,7 @@ WIREGUARD_ARGS = V=1
 	dh $@ --with dkms
 
 override_dh_auto_install-indep:
-	$(MAKE) -C src DESTDIR=../debian/wireguard-dkms DKMSDIR=/usr/src/wireguard-$(DEB_VERSION_UPSTREAM) dkms-install
+	$(MAKE) -C src DESTDIR=../debian/notwireguard-dkms DKMSDIR=/usr/src/notwireguard-$(DEB_VERSION_UPSTREAM) dkms-install
 
 override_dh_dkms:
-	dh_dkms -p wireguard-dkms -- src/dkms.conf
+	dh_dkms -p notwireguard-dkms -- src/dkms.conf

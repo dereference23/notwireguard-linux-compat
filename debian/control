@@ -1,27 +1,21 @@
-Source: wireguard-linux-compat
+Source: notwireguard-linux-compat
 Section: net
 Priority: optional
-Maintainer: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Uploaders:
- Unit 193 <unit193@debian.org>,
+Maintainer: Alexander Winkowski <dereference23@outlook.com>
 Build-Depends:
  debhelper-compat (= 13),
  dkms,
 Standards-Version: 4.5.1
-Homepage: https://www.wireguard.com
-Vcs-Git: https://salsa.debian.org/debian/wireguard-linux-compat.git
-Vcs-Browser: https://salsa.debian.org/debian/wireguard-linux-compat
 Rules-Requires-Root: no
 
-Package: wireguard-dkms
+Package: notwireguard-dkms
 Architecture: all
 Section: kernel
 Depends:
  ${misc:Depends},
  ${perl:Depends},
 Recommends:
- wireguard (>= 0.0.20191219),
- wireguard-tools (>= 0.0.20191219),
+ notwireguard-tools (>= 1.0.20210914),
 Description: fast, modern, secure kernel VPN tunnel (DKMS version)
  WireGuard is a novel VPN that runs inside the Linux Kernel and uses
  state-of-the-art cryptography (the "Noise" protocol). It aims to be

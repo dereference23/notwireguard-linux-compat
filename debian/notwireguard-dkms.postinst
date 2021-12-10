@@ -9,15 +9,15 @@ case "$1" in
 
     configure|reconfigure)
         # Get the version of the current loaded module:
-        old_version="$(cat /sys/module/wireguard/version 2>/dev/null)" || exit 0
+        old_version="$(cat /sys/module/notwireguard/version 2>/dev/null)" || exit 0
         # Get the version of the latest available module:
-        new_version="$(modinfo -F version wireguard 2>/dev/null)" || exit 0
+        new_version="$(modinfo -F version notwireguard 2>/dev/null)" || exit 0
         # See if the new one is actually newer:
         dpkg --compare-versions "$old_version" lt "$new_version" || exit 0
         # Trigger an update notification that recommends a reboot:
         touch /run/reboot-required || true
-        grep -Fqsx wireguard-dkms /run/reboot-required.pkgs || \
-            echo wireguard-dkms >> /run/reboot-required.pkgs || true
+        grep -Fqsx notwireguard-dkms /run/reboot-required.pkgs || \
+            echo notwireguard-dkms >> /run/reboot-required.pkgs || true
         ;;
     *)
         ;;
