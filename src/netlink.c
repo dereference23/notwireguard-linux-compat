@@ -9,7 +9,7 @@
 #include "socket.h"
 #include "queueing.h"
 #include "messages.h"
-#include "uapi/wireguard.h"
+#include "uapi/notwireguard.h"
 #include <linux/if.h>
 #include <net/genetlink.h>
 #include <net/sock.h>

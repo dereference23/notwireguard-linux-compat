@@ -1,4 +1,4 @@
-# WireGuard for Linux 3.10 - 5.11 with obfuscation support
+# NotWireGuard for Linux 3.10+
 
 There are several ways DPI can detect WireGuard traffic
 
