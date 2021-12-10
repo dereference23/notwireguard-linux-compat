@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: Alexander Winkowski <dereference23@outlook.com>
 Build-Depends:
- debhelper-compat (= 13),
+ debhelper-compat (= 12),
  dkms,
 Standards-Version: 4.5.1
 Rules-Requires-Root: no
