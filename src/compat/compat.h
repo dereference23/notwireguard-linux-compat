@@ -1126,7 +1126,7 @@ static const struct header_ops ip_tunnel_header_ops = { .parse_protocol = ip_tun
 #endif
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 7) && !(LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 84) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0))
 #include <net/dst_cache.h>
 struct dst_cache_pcpu {
 	unsigned long refresh_ts;
