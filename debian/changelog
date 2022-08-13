@@ -1,3 +1,9 @@
+notwireguard-linux-compat (1.0.20220627) focal; urgency=medium
+
+  * Update to v1.0.20220627
+
+ -- Alexander Winkowski <dereference23@outlook.com>  Sat, 13 Aug 2022 06:13:01 +0000
+
 notwireguard-linux-compat (1.0.20211208) focal; urgency=medium
 
   * Initial release.
