@@ -63,8 +63,11 @@
 #endif
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 121)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 #define dev_get_tstats64 ip_tunnel_get_stats64
+#endif
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 121)
 #define flowi6_to_flowi_common flowi6_to_flowi
 #define flowi4_to_flowi_common flowi4_to_flowi
 #endif
